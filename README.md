@@ -1,3 +1,4 @@
+![Logo](./logo.png)
 # TMBot介绍
 ## TMBot是以Websocket连接与有着OneBot标准的软件建立连接，并实现接口的插件加载框架
 ---
@@ -21,7 +22,7 @@
 例如:\
 tools/data: JsonConfigFileClass, IniConfigFileClass, \
 tools/file: FileClass.readFrom, writeLine, createDir, delete, exists, copy, move, rename, getFileSize, checkIsDir, getFilesList,
-tools/logger: Logger\
+tools/logger: Logger
 
 3. TMBot是先登录完成所有配置的WS连接然后再加载插件的
 4. TMBot已经实现了OneBot标准的连接，你可以使用 modules/BotDockingMgr 的 BotDockingMgr.getBot 来获取已连接实例
