@@ -1,0 +1,14 @@
+{
+  "name": "TMBot",
+  "description": "TM机器人框架(OneBot标准)",
+  "main": "./app",
+  "dependencies": {
+    "@types/deasync": "^0.1.2",
+    "@types/needle": "^2.5.3",
+    "@types/node": "^18.11.9",
+    "@types/websocket": "^1.0.5",
+    "deasync": "^0.1.28",
+    "needle": "^3.1.0",
+    "websocket": "^1.0.34"
+  }
+}

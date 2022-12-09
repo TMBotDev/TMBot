@@ -1,0 +1,7 @@
+{
+    "机器人一号": {
+        "Websocket": "ws://42.192.248.110:22",
+        "ReConnectCount": -1,
+        "ReConnectTime": 2
+    }
+}
