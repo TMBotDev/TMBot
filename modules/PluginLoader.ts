@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from "fs";
 import path from "path";
 import { FileClass } from "../tools/file";
 import { Logger } from "../tools/logger";
+import * as child_process from 'child_process';
 
 const PLUGIN_DIR = "./plugins/";
 
@@ -57,17 +58,25 @@ export class PluginPackage {
     _CheckDependencies() {
         let PackagePath = path.join(this.dir, "package.json");
         let packageObj = JSON.parse(readFileSync(PackagePath, "utf8"));
-        for (let key in packageObj.dependencies || {}) {
-            let ModuleDir = path.join(this.dir, `node_modules/${key}`);
-            try {
-                if (!statSync(ModuleDir).isDirectory()) {
-                    throw new Error("");
+        try {
+            for (let key in packageObj.dependencies || {}) {
+                let ModuleDir = path.join(this.dir, `node_modules/${key}`);
+                try {
+                    if (!statSync(ModuleDir).isDirectory()) {
+                        throw new Error("");
+                    }
+                } catch (_e) {
+                    let e = _e as Error;
+                    e.message = `Node包 [${this.dir}] 加载失败!原因: 此插件的依赖包 [${key}] 未安装!`;
+                    throw e;
                 }
-            } catch (_e) {
-                let e = _e as Error;
-                e.message = `Node包 [${this.dir}] 加载失败!原因: 此插件的依赖包 [${key}] 未安装!`;
-                throw e;
             }
+        } catch (_e) {
+            console.log(this.dir);
+            child_process.execSync(
+                `cd "${FileClass.getStandardPath(this.dir)}" && npm i`,
+                { "stdio": "inherit" }
+            );
         }
     }
     load() {
