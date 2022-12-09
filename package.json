@@ -2,6 +2,9 @@
   "name": "TMBot",
   "description": "TM机器人框架(OneBot标准)",
   "main": "./app",
+  "scripts": {
+    "start": "node app.js"
+  },
   "dependencies": {
     "@types/deasync": "^0.1.2",
     "@types/needle": "^2.5.3",

@@ -1,5 +1,6 @@
-import { readdir, readdirSync, readFileSync, statSync } from "fs";
+import { readdirSync, readFileSync, statSync } from "fs";
 import path from "path";
+import { FileClass } from "../tools/file";
 import { Logger } from "../tools/logger";
 
 const PLUGIN_DIR = "./plugins/";
@@ -10,6 +11,10 @@ let logger = new Logger("PluginLoader");
 
 export class PluginPackage {
     static async LoadAllPackage() {
+        if (!FileClass.exists(PLUGIN_DIR)) {
+            logger.info(`插件加载目录不存在!自动创建...`);
+            FileClass.mkdir(PLUGIN_DIR);
+        }
         let dirs = readdirSync(PLUGIN_DIR, { "withFileTypes": true });
         let l = dirs.length, i = 0;
         while (i < l) {
