@@ -6,12 +6,12 @@ const WebSocket_1 = require("./WebSocket");
 // import { sleep } from "deasync";
 let allOneBotDockingInstance = new Map();
 class BotDockingMgr {
-    static _NewBot(name, conn, reConnectCount, reConnectTime) {
+    static _NewBot(name, conn, reConnectCount, reConnectTime, conf) {
         return new Promise((resF) => {
             reConnectCount = parseInt(reConnectCount + "");
             reConnectTime = parseInt(reConnectTime + "");
             let wsc = new WebSocket_1.WebsocketClient(conn);
-            let d = new OneBotDocking_1.OneBotDocking(name, wsc);
+            let d = new OneBotDocking_1.OneBotDocking(name, wsc, conf);
             let logger = d.logger;
             let reConnectC = 0;
             let isFirst = true;
@@ -22,7 +22,7 @@ class BotDockingMgr {
                     let time = (reConnectTime > 0 ? reConnectTime : 0);
                     logger.warn(`WS连接断开!根据配置文件所述,将在${time}秒后重连!(${(reConnectC + 1)}/${reConnectCount})`);
                     let timeout = (time * 1000) || 1;
-                    console.log(timeout);
+                    // console.log(timeout)
                     setTimeout(() => {
                         wsc.reConnect();
                         let clear = () => {

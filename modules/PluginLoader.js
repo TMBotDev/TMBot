@@ -45,12 +45,6 @@ const PLUGIN_DIR = "./plugins/";
 let allPackage = new Map();
 let logger = new logger_1.Logger("PluginLoader");
 class PluginPackage {
-    constructor(dir, name, desc, version) {
-        this.dir = dir;
-        this.name = name;
-        this.desc = desc;
-        this.version = version;
-    }
     static LoadAllPackage() {
         return __awaiter(this, void 0, void 0, function* () {
             if (!file_1.FileClass.exists(PLUGIN_DIR)) {
@@ -90,6 +84,12 @@ class PluginPackage {
             logger.error(e.stack);
             return undefined;
         }
+    }
+    constructor(dir, name, desc, version) {
+        this.dir = dir;
+        this.name = name;
+        this.desc = desc;
+        this.version = version;
     }
     _CheckDependencies() {
         let PackagePath = path_1.default.join(this.dir, "package.json");

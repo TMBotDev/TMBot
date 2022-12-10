@@ -1,3 +1,4 @@
+import path from "path";
 import { Logger, LoggerLevel } from "../tools/logger";
 import { Event, WebsocketClient } from "./WebSocket";
 
@@ -406,7 +407,7 @@ export enum HonorType {
     快乐源泉 = "emotion"
 }
 
-async function SafeGiveGroupInfo(this: OneBotDocking, group_id: number) {
+async function SafeGetGroupInfo(this: OneBotDocking, group_id: number) {
     let group = this.getGroupInfoSync(group_id);
     if (group == null) {
         group = new GroupInfo({
@@ -434,14 +435,15 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
                 obj.sub_type,
                 msg
             );
-            this.logger.info(`私聊消息: ${sender.nickname} >> ${msg.msg}`);
+
+            this.conf["MsgLog"] && this.logger.info(`私聊消息: ${sender.nickname} >> ${msg.msg}`);
             break;
         }
         case "group": {
             let msg = new MsgInfo({ "message": obj.message, "message_id": obj.message_id, "raw_message": obj.raw_message });
             // this.MsgIDMap.set(msg.msg_id, msg);
 
-            let group = await SafeGiveGroupInfo.call(this, obj.group_id);
+            let group = await SafeGetGroupInfo.call(this, obj.group_id);
             let member: GroupMemberInfo | AnonymousInfo;
             // console.log(obj);
 
@@ -458,7 +460,7 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
                 member,
                 msg
             );
-            this.logger.info(`[${group.group_name}(${group.group_id})] ${sender.nickname} >> ${msg.msg}`);
+            this.conf["MsgLog"] && this.logger.info(`[${group.group_name}(${group.group_id})] ${sender.nickname} >> ${msg.msg}`);
             break;
         }
         // case "discuss": {
@@ -472,7 +474,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
     // console.log(obj);
     switch (obj.notice_type as "group_upload" | "group_admin" | "group_decrease" | "group_increase" | "group_ban" | "group_recall" | "friend_add" | "friend_recall" | "notify" | "group_card" | "offline_file" | "client_status" | "essence") {
         case "group_upload": {
-            let group = await SafeGiveGroupInfo.call(this, obj.group_id);
+            let group = await SafeGetGroupInfo.call(this, obj.group_id);
             let member = group.getMember(obj.user_id)!;
             let file = new FileInfo(obj.file);
             this.events.onGroupUploadFile.fire(
@@ -484,7 +486,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             break;
         }
         case "group_admin": {
-            let group = await SafeGiveGroupInfo.call(this, obj.group_id);
+            let group = await SafeGetGroupInfo.call(this, obj.group_id);
             let member = group.getMember(obj.user_id)!;
             this.events.onGroupAdminChange.fire(
                 "OneBotDockingProcess_Event_GroupAdminChange",
@@ -494,11 +496,11 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             );
             let perms = ["Admin", "Member"];
             await group.refreshMemberInfo(this, member.user_id);
-            this.logger.info(`[${group.group_name}(${group.group_id})] 群管理员变动: ${member.card || member.nickname}(${member.user_id}) (${perms[+(obj.sub_type == "set")]})->(${perms[+(obj.sub_type == "unset")]})`);
+            this.conf["NoticeLog"] && this.logger.info(`[${group.group_name}(${group.group_id})] 群管理员变动: ${member.card || member.nickname}(${member.user_id}) (${perms[+(obj.sub_type == "set")]})->(${perms[+(obj.sub_type == "unset")]})`);
             break;
         }
         case "group_decrease": {
-            let group = await SafeGiveGroupInfo.call(this, obj.group_id);
+            let group = await SafeGetGroupInfo.call(this, obj.group_id);
             let member = group.getMember(obj.user_id)!;
             let op = await this.getStrangerInfoEx(obj.operator_id);
             this.events.onGroupLeave.fire(
@@ -510,16 +512,16 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             );
             if (group.Owner!.user_id == obj.user_id) {
                 this.Groups.delete(obj.group_id);
-                this.logger.info(`群聊: [${group.group_name}](${group.group_id}) 已解散`);
+                this.conf["NoticeLog"] && this.logger.info(`群聊: [${group.group_name}](${group.group_id}) 已解散`);
             } else if (obj.user_id == this.LoginInfo.user_id) {
                 this.Groups.delete(group.group_id);
-                this.logger.info(`登录号${["被踢出", "离开"][+(obj.sub_type != "kick_me")]}群聊: ${group.group_name}(${group.group_id})`);
+                this.conf["NoticeLog"] && this.logger.info(`登录号${["被踢出", "离开"][+(obj.sub_type != "kick_me")]}群聊: ${group.group_name}(${group.group_id})`);
             } else if (obj.sub_type == "leave") {
                 if (member.role == "owner") {
                     (group.getAdmins(false) as Map<number, GroupMemberInfo>).delete(member.user_id);
                 }
                 (group.getMembers(false) as Map<number, GroupMemberInfo>).delete(member.user_id);
-                this.logger.info(`[${group.group_name}(${group.group_id})] 成员 ${member.card || member.nickname}(${member.user_id}) 退出群聊`);
+                this.conf["NoticeLog"] && this.logger.info(`[${group.group_name}(${group.group_id})] 成员 ${member.card || member.nickname}(${member.user_id}) 退出群聊`);
             }
             break;
         }
@@ -534,14 +536,14 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             let strangeInfo = await this.getStrangerInfoEx(obj.user_id);
             let op = await this.getStrangerInfoEx(obj.operator_id);
             if (obj.user_id == this.LoginInfo.user_id) {
-                this.logger.info(`登录号加入群聊: ${baseGroupInfo.group_name}(${baseGroupInfo.group_id})!`);
+                this.conf["NoticeLog"] && this.logger.info(`登录号加入群聊: ${baseGroupInfo.group_name}(${baseGroupInfo.group_id})!`);
                 let group = new GroupInfo({ "group_name": baseGroupInfo.group_name, "group_id": baseGroupInfo.group_id });
                 await group._init(this);
                 this.Groups.set(baseGroupInfo.group_id, group);
             } else {
-                let group = await SafeGiveGroupInfo.call(this, obj.group_id);
+                let group = await SafeGetGroupInfo.call(this, obj.group_id);
                 let member = (await group.refreshMemberInfo(this, obj.user_id))!;
-                this.logger.info(`[${group.group_name}(${group.group_id})] 加入新成员: ${strangeInfo?.nickname}(${member.user_id})`);
+                this.conf["NoticeLog"] && this.logger.info(`[${group.group_name}(${group.group_id})] 加入新成员: ${strangeInfo?.nickname}(${member.user_id})`);
             }
             this.events.onGroupJoin.fire(
                 "OneBotDockingProcess_Event_GroupJoin",
@@ -553,7 +555,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             break;
         }
         case "group_ban": {
-            let group = await SafeGiveGroupInfo.call(this, obj.group_id);
+            let group = await SafeGetGroupInfo.call(this, obj.group_id);
             let op = (await group.refreshMemberInfo(this, obj.operator_id))!;
             if (obj.user_id == 0) {
                 this.events.onGroupWholeMute.fire(
@@ -575,7 +577,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             break;
         }
         case "group_recall": {
-            let group = await SafeGiveGroupInfo.call(this, obj.group_id);
+            let group = await SafeGetGroupInfo.call(this, obj.group_id);
             let member = group.getMember(obj.user_id)!;
             let op = group.getMember(obj.operator_id)!;
             let msg = await this.getMsgInfoEx(obj.message_id);
@@ -616,7 +618,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             break;
         }
         case "notify": {
-            let group = await SafeGiveGroupInfo.call(this, obj.group_id);
+            let group = await SafeGetGroupInfo.call(this, obj.group_id);
             switch (obj.sub_type as "poke" | "lucky_king" | "honor") {
                 case "poke": {
                     if (group) {
@@ -663,7 +665,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             break;
         }
         case "group_card": {
-            let group = await SafeGiveGroupInfo.call(this, obj.group_id);
+            let group = await SafeGetGroupInfo.call(this, obj.group_id);
             let member = group.getMember(obj.user_id)!;
             this.events.onGroupCardChanged.fire(
                 "OneBotDockingProcess_Event_GroupCardChanged",
@@ -694,7 +696,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             break;
         }
         case "essence": {
-            let group = await SafeGiveGroupInfo.call(this, obj.group_id);
+            let group = await SafeGetGroupInfo.call(this, obj.group_id);
             if (!group) { return; }
             let msg = await this.getMsgInfoEx(obj.message_id);
             // let msg = this.MsgIDMap.get(obj.message_id);
@@ -806,10 +808,14 @@ export class OneBotDocking {
     public logger: Logger;
     constructor(
         public Name: string,
-        private wsc: WebsocketClient
+        private wsc: WebsocketClient,
+        public conf: { [key: string]: any }
     ) {
         this._Init();
         this.logger = new Logger(Name, 4);
+        if (!!(conf["LogFile"] || "").trim()) {
+            this.logger.setFile(path.join("./logs", conf["LogFile"]));
+        }
     }
 
     get Client() { return this.wsc; }
