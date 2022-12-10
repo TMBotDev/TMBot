@@ -42,6 +42,7 @@ OneBot标准的TMBot插件加载框架（WebsocketClient） 推荐使用go-cqhtt
 - [上手指南](#上手指南)
   - [开发前的配置要求](#开发前的配置要求)
   - [安装步骤](#安装步骤)
+  - [配置文件示例](#配置文件示例)
 - [文件目录说明](#文件目录说明)
 - [部署](#部署)
 - [使用到的框架](#使用到的框架)
@@ -57,10 +58,21 @@ OneBot标准的TMBot插件加载框架（WebsocketClient） 推荐使用go-cqhtt
 1. 前往Releases页面下载最新的TMBot正式版
 2. 安装go-cqhttp或其他OneBot标准的机器人后端,设置为正向ws连接(go-cqhttp链接：https://github.com/Mrs4s/go-cqhttp)
 2. 启动start.bat(Linux使用start.sh)安装所需依赖
-3. 启动框架，生成配置文件，填写信息和ws地址端口
-4. 修改配置文件，启动机器人
+3. 启动框架，在/config/文件夹找到config.json,写入配置
+4. 修改配置文件后，启动机器人
 5. Enjoy it ;)
 
+#### 配置文件示例
+
+```
+{
+    "机器人一号": { // 节点名字，可自定义
+        "Websocket": "ws://11.451.419.198:10",  // 填写你在机器人后端设置的正向ws地址和端口
+        "ReConnectCount": -1, // 重连次数限制，-1为无限重连
+        "ReConnectTime": 2    // 重连时间间隔 不可为-1
+    }
+}
+```
 
 
 #### 开发前的配置要求
@@ -136,11 +148,22 @@ FileTree:
 ### 您还需要注意的是
 
 
-1. TMBot已经为你写好了一些基础接口实现，\
-例如:\
-tools/data: JsonConfigFileClass, IniConfigFileClass, \
-tools/file: FileClass.readFrom, writeLine, createDir, delete, exists, copy, move, rename, getFileSize, checkIsDir, getFilesList,
+1. TMBot已经为你写好了一些基础接口实现，
+例如:
+```tools/data: JsonConfigFileClass,IniConfigFileClass,
+tools/file: FileClass.readFrom,
+writeLine,
+createDir,
+delete,
+exists,
+copy,
+move,
+rename,
+getFileSize,
+checkIsDir,
+getFilesList,
 tools/logger: Logger
+```
 
 2. TMBot是先登录完成所有配置的WS连接然后再加载插件的
 3. TMBot已经实现了OneBot标准的连接，你可以使用 modules/BotDockingMgr 的 BotDockingMgr.getBot 来获取已连接实例
@@ -148,7 +171,7 @@ tools/logger: Logger
 5. TMBot会自行检索插件的package.json所规定的依赖是否在插件目录是否完整
 6. TMBot插件发行形式必须以Node包的形式发布!不要包含TMBot的任何东西!不要修改源代码!必须可以直接解压至plugins目录运行!
 7. TMBot框架的插件是以Node包形式存在， 所以你可以在你的项目里随意引用所有模块
-(请不要随意"使用"内部功能实现的模块) 如：OneBotDocking， PluginLoader，Websocket。
+(请不要随意"使用"内部功能实现的模块) 如：```OneBotDocking， PluginLoader，Websocket```。
 虽然不可以使用，但是可以引用它内部的方法作为参数类型
 
 
