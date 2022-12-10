@@ -28,10 +28,11 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const logger_1 = require("./logger");
 let standardPath = (() => {
-    // let dir = __dirname;
+    let dir = __dirname;
+    dir = (path.dirname(dir));
     // dir = path.join(path.dirname(path.dirname(path.dirname(dir))), "bedrock_server/");
-    // return dir.replace(/\\/g, "/");
-    return "./";
+    return dir.replace(/\\/g, "/");
+    // return "./"
 })();
 function getStandardPath(path1) {
     path1 = path1.replace(/\\/g, "/");

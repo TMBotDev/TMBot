@@ -4,10 +4,11 @@ import { Logger } from "./logger";
 
 
 let standardPath = (() => {
-    // let dir = __dirname;
+    let dir = __dirname;
+    dir = (path.dirname(dir));
     // dir = path.join(path.dirname(path.dirname(path.dirname(dir))), "bedrock_server/");
-    // return dir.replace(/\\/g, "/");
-    return "./"
+    return dir.replace(/\\/g, "/");
+    // return "./"
 })();
 
 

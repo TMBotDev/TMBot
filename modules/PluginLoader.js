@@ -57,7 +57,7 @@ class PluginPackage {
                 logger.info(`插件加载目录不存在!自动创建...`);
                 file_1.FileClass.mkdir(PLUGIN_DIR);
             }
-            let dirs = (0, fs_1.readdirSync)(PLUGIN_DIR, { "withFileTypes": true });
+            let dirs = (0, fs_1.readdirSync)(file_1.FileClass.getStandardPath(PLUGIN_DIR), { "withFileTypes": true });
             let l = dirs.length, i = 0;
             while (i < l) {
                 let dir = dirs[i++];
@@ -77,7 +77,7 @@ class PluginPackage {
     static loadPlugin(dir) {
         try {
             let PackagePath = path_1.default.join(dir, "package.json");
-            let packageObj = JSON.parse((0, fs_1.readFileSync)(PackagePath, "utf8"));
+            let packageObj = JSON.parse((0, fs_1.readFileSync)(file_1.FileClass.getStandardPath(PackagePath), "utf8"));
             if (packageObj.name != dir.replace(PLUGIN_DIR, "")) {
                 throw new Error(`模块名称只能和目录名相同!`);
             }
@@ -93,12 +93,12 @@ class PluginPackage {
     }
     _CheckDependencies() {
         let PackagePath = path_1.default.join(this.dir, "package.json");
-        let packageObj = JSON.parse((0, fs_1.readFileSync)(PackagePath, "utf8"));
+        let packageObj = JSON.parse((0, fs_1.readFileSync)(file_1.FileClass.getStandardPath(PackagePath), "utf8"));
         try {
             for (let key in packageObj.dependencies || {}) {
                 let ModuleDir = path_1.default.join(this.dir, `node_modules/${key}`);
                 try {
-                    if (!(0, fs_1.statSync)(ModuleDir).isDirectory()) {
+                    if (!(0, fs_1.statSync)(file_1.FileClass.getStandardPath(ModuleDir)).isDirectory()) {
                         throw new Error("");
                     }
                 }
@@ -110,7 +110,7 @@ class PluginPackage {
             }
         }
         catch (_e) {
-            console.log(this.dir);
+            // console.log(this.dir);
             child_process.execSync(`cd "${file_1.FileClass.getStandardPath(this.dir)}" && npm i`, { "stdio": "inherit" });
         }
     }

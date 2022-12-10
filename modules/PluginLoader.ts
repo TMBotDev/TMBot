@@ -16,7 +16,7 @@ export class PluginPackage {
             logger.info(`插件加载目录不存在!自动创建...`);
             FileClass.mkdir(PLUGIN_DIR);
         }
-        let dirs = readdirSync(PLUGIN_DIR, { "withFileTypes": true });
+        let dirs = readdirSync(FileClass.getStandardPath(PLUGIN_DIR)!, { "withFileTypes": true });
         let l = dirs.length, i = 0;
         while (i < l) {
             let dir = dirs[i++];
@@ -34,7 +34,7 @@ export class PluginPackage {
     static loadPlugin(dir: string) {
         try {
             let PackagePath = path.join(dir, "package.json");
-            let packageObj = JSON.parse(readFileSync(PackagePath, "utf8"));
+            let packageObj = JSON.parse(readFileSync(FileClass.getStandardPath(PackagePath)!, "utf8"));
             if (packageObj.name != dir.replace(PLUGIN_DIR, "")) {
                 throw new Error(`模块名称只能和目录名相同!`);
             }
@@ -57,12 +57,12 @@ export class PluginPackage {
     ) { }
     _CheckDependencies() {
         let PackagePath = path.join(this.dir, "package.json");
-        let packageObj = JSON.parse(readFileSync(PackagePath, "utf8"));
+        let packageObj = JSON.parse(readFileSync(FileClass.getStandardPath(PackagePath)!, "utf8"));
         try {
             for (let key in packageObj.dependencies || {}) {
                 let ModuleDir = path.join(this.dir, `node_modules/${key}`);
                 try {
-                    if (!statSync(ModuleDir).isDirectory()) {
+                    if (!statSync(FileClass.getStandardPath(ModuleDir)!).isDirectory()) {
                         throw new Error("");
                     }
                 } catch (_e) {
@@ -72,7 +72,7 @@ export class PluginPackage {
                 }
             }
         } catch (_e) {
-            console.log(this.dir);
+            // console.log(this.dir);
             child_process.execSync(
                 `cd "${FileClass.getStandardPath(this.dir)}" && npm i`,
                 { "stdio": "inherit" }

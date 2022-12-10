@@ -8,6 +8,21 @@
 * TMBot框架的插件是以Node包形式存在，
 所以你可以在你的项目里随意引用所有模块
 
+(请不要随意"使用"内部功能实现的模块)
+如：OneBotDocking， PluginLoader，Websocket
+
+虽然不可以使用，但是可以引用它内部的方法作为参数类型
+
+---
+
+## 开发注意事项
+此框架可以运行于LiteLoaderBDS与NodeJS上
+### 但是！！你要注意，在NodeJS环境上运行，根目录是直接作用于项目目录的
+### 在LiteLoaderBDS上，根目录是作用于BDS目录上的！
+### 所以可以使用 [FileClass.getStandardPath(<相对目录>)] 来获取作用于项目路径的绝对路径来避免此类BUG出现
+#### TIPS: TMBot的基础接口实现已经全部使用了上述方法，所以可以直接传入作用于项目的相对路径
+
+
 ---
 
 1. 首先，TMBot框架目录结构如下\
