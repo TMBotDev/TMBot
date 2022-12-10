@@ -14,6 +14,11 @@ let Logo = String.raw`
 
 let logger = new Logger("TMBotMain");
 
+export let Version = {
+    "version": [1, 0, 1],
+    "isBeta": true
+};
+
 let TMBotConfig = new JsonConfigFileClass("./config/config.json", JSON.stringify({
     "RoBot": {
         "Websocket": "ws://127.0.0.1:22",
@@ -73,6 +78,7 @@ async function load() {
             logger.error((e as Error).stack);
         }
     }
-    delayLoadPlugins();
+    await delayLoadPlugins();
+    logger.info(`TMBot加载完成!Version: ${Version.version.join(".")}${Version.isBeta ? "Beta" : ""}`);
 }
 load();

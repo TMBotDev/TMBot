@@ -9,6 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Version = void 0;
 const BotDockingMgr_1 = require("./modules/BotDockingMgr");
 const PluginLoader_1 = require("./modules/PluginLoader");
 const data_1 = require("./tools/data");
@@ -22,6 +23,10 @@ let Logo = String.raw `
                               
 `;
 let logger = new logger_1.Logger("TMBotMain");
+exports.Version = {
+    "version": [1, 0, 1],
+    "isBeta": true
+};
 let TMBotConfig = new data_1.JsonConfigFileClass("./config/config.json", JSON.stringify({
     "RoBot": {
         "Websocket": "ws://127.0.0.1:22",
@@ -83,7 +88,8 @@ function load() {
                 logger.error(e.stack);
             }
         }
-        delayLoadPlugins();
+        yield delayLoadPlugins();
+        logger.info(`TMBot加载完成!Version: ${exports.Version.version.join(".")}${exports.Version.isBeta ? "Beta" : ""}`);
     });
 }
 load();
