@@ -55,7 +55,7 @@ OneBot标准的TMBot插件加载框架（WebsocketClient） 推荐使用go-cqhtt
 ### 上手指南
 
 1. 前往Releases页面下载最新的TMBot正式版
-2. 安装go-cqhttp("https://github.com/Mrs4s/go-cqhttp")或其他OneBot标准的机器人后端,设置为正向ws连接
+2. 安装go-cqhttp或其他OneBot标准的机器人后端,设置为正向ws连接(go-cqhttp链接：https://github.com/Mrs4s/go-cqhttp)
 2. 启动start.bat(Linux使用start.sh)安装所需依赖
 3. 启动框架，生成配置文件，填写信息和ws地址端口
 4. 修改配置文件，启动机器人
