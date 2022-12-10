@@ -15,7 +15,7 @@ OneBot标准的TMBot插件加载框架（WebsocketClient） 推荐使用go-cqhtt
 <br/>
 
 <p align="center">
-  <a href="https://github.com/shaojintian/Best_README_template/">
+  <a href="https://github.com/TMBotDev/TMBot">
     <img src="logo.png" alt="Logo" width="378" height="400">
   </a>
 
