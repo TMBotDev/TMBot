@@ -14,6 +14,7 @@ let Logo = String.raw`
 
 let logger = new Logger("TMBotMain");
 
+
 export let Version = {
     "version": [1, 0, 1],
     "isBeta": true
