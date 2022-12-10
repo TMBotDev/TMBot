@@ -26,11 +26,11 @@ OneBot标准的TMBot插件加载框架（WebsocketClient） 推荐使用go-cqhtt
 </a>
     <br />
     <br />
-    <a href="https://github.com/shaojintian/Best_README_template">查看仓库</a>
+    <a href="https://github.com/TMBotDev/TMBot">查看仓库</a>
     ·
-    <a href="https://github.com/shaojintian/Best_README_template/issues">报告Bug</a>
+    <a href="https://github.com/TMBotDev/TMBot">报告Bug</a>
     ·
-    <a href="https://github.com/shaojintian/Best_README_template/issues">提出新特性</a>
+    <a href="https://github.com/TMBotDev/TMBot">提出新特性</a>
   </p>
 
 </p>
@@ -66,10 +66,13 @@ OneBot标准的TMBot插件加载框架（WebsocketClient） 推荐使用go-cqhtt
 
 ```
 {
-    "机器人一号": { // 节点名字，可自定义
-        "Websocket": "ws://11.451.419.198:10",  // 填写你在机器人后端设置的正向ws地址和端口
-        "ReConnectCount": -1, // 重连次数限制，-1为无限重连
-        "ReConnectTime": 2    // 重连时间间隔 不可为-1
+    "RoBot": {  //机器人名字
+        "Websocket": "ws://127.0.0.1:22",  //你的ws地址和端口
+        "ReConnectCount": 5,  //重连次数，-1为不限
+        "ReConnectTime": 4,  //重连间隔时间，单位为秒
+        "MsgLog": true,  //消息日志是否启用
+        "NoticeLog": true,  
+        "LogFile": "RoBotLog-{Y}-{M}-{D}.log"  //日志文件名格式，Y为年，M为月，D为日
     }
 }
 ```
