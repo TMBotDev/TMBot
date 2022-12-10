@@ -1,6 +1,7 @@
 import * as process from "process";
 import * as fs from "fs";
 import * as path from "path";
+import { FileClass } from "./file";
 // import { ServerPlayer } from "bdsx/bds/player";
 // import { bedrockServer } from "bdsx/launcher";
 // import { TextPacket } from "bdsx/bds/packets";
@@ -78,6 +79,30 @@ export enum LoggerLevel {
     Slient, Fatal, Error, Warn, Info, Debug
 }
 
+function ReplaceDate(str: string) {
+    let date = new Date();
+    let toFull = (val: number): string => {
+        if (val > 9) {
+            return val.toString();
+        } else {
+            return `0${val.toString()}`;
+        }
+    };
+    let MAP: { [key: string]: any } = {
+        "{Y}": date.getFullYear() + "",
+        "{M}": toFull(date.getMonth() + 1) + "",
+        "{D}": toFull(date.getDate()) + ""
+    };
+    let keys = Object.keys(MAP), i = 0, l = keys.length;
+    while (i < l) {
+        let key = keys[i++];
+        while (str.includes(key)) {
+            str = str.replace(key, MAP[key]);
+        }
+    }
+    return str;
+}
+
 
 export class Logger {
     #Title: string; #isSyncOutput: boolean;
@@ -142,8 +167,9 @@ export class Logger {
                 process.nextTick(OutputConsoleFunc);
             }
             if (this.#Config.File.path != "" && type <= this.#Config.File.level) {
-                mkdirSync(path.dirname(this.#Config.File.path));
-                fs.appendFileSync(this.#Config.File.path, NoColorLogStr + "\n");
+                let dirName = path.dirname(this.#Config.File.path);
+                mkdirSync(dirName);
+                fs.appendFileSync(dirName + ReplaceDate(this.#Config.File.path.replace(dirName, "")), NoColorLogStr + "\n");
             }
             if (this.#UsePlayer) {
                 // if (this.#Config.Player != null) {
@@ -183,7 +209,7 @@ export class Logger {
         return true;
     };
     setFile(path: string, level: number | LoggerLevel = 4): boolean {
-        this.#Config.File.path = path;
+        this.#Config.File.path = FileClass.getStandardPath(path)!;
         this.#Config.File.level = level;
         return true;
     };

@@ -39,6 +39,7 @@ exports.Logger = exports.LoggerLevel = void 0;
 const process = __importStar(require("process"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+const file_1 = require("./file");
 // import { ServerPlayer } from "bdsx/bds/player";
 // import { bedrockServer } from "bdsx/launcher";
 // import { TextPacket } from "bdsx/bds/packets";
@@ -112,6 +113,30 @@ var LoggerLevel;
     LoggerLevel[LoggerLevel["Info"] = 4] = "Info";
     LoggerLevel[LoggerLevel["Debug"] = 5] = "Debug";
 })(LoggerLevel = exports.LoggerLevel || (exports.LoggerLevel = {}));
+function ReplaceDate(str) {
+    let date = new Date();
+    let toFull = (val) => {
+        if (val > 9) {
+            return val.toString();
+        }
+        else {
+            return `0${val.toString()}`;
+        }
+    };
+    let MAP = {
+        "{Y}": date.getFullYear() + "",
+        "{M}": toFull(date.getMonth() + 1) + "",
+        "{D}": toFull(date.getDate()) + ""
+    };
+    let keys = Object.keys(MAP), i = 0, l = keys.length;
+    while (i < l) {
+        let key = keys[i++];
+        while (str.includes(key)) {
+            str = str.replace(key, MAP[key]);
+        }
+    }
+    return str;
+}
 class Logger {
     constructor(title = "", level = 4, isSyncOutput = true) {
         _Logger_Title.set(this, void 0);
@@ -195,8 +220,9 @@ class Logger {
                 process.nextTick(OutputConsoleFunc);
             }
             if (__classPrivateFieldGet(this, _Logger_Config, "f").File.path != "" && type <= __classPrivateFieldGet(this, _Logger_Config, "f").File.level) {
-                mkdirSync(path.dirname(__classPrivateFieldGet(this, _Logger_Config, "f").File.path));
-                fs.appendFileSync(__classPrivateFieldGet(this, _Logger_Config, "f").File.path, NoColorLogStr + "\n");
+                let dirName = path.dirname(__classPrivateFieldGet(this, _Logger_Config, "f").File.path);
+                mkdirSync(dirName);
+                fs.appendFileSync(dirName + ReplaceDate(__classPrivateFieldGet(this, _Logger_Config, "f").File.path.replace(dirName, "")), NoColorLogStr + "\n");
             }
             if (__classPrivateFieldGet(this, _Logger_UsePlayer, "f")) {
                 // if (this.#Config.Player != null) {
@@ -238,7 +264,7 @@ class Logger {
     }
     ;
     setFile(path, level = 4) {
-        __classPrivateFieldGet(this, _Logger_Config, "f").File.path = path;
+        __classPrivateFieldGet(this, _Logger_Config, "f").File.path = file_1.FileClass.getStandardPath(path);
         __classPrivateFieldGet(this, _Logger_Config, "f").File.level = level;
         return true;
     }
