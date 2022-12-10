@@ -67,8 +67,17 @@ class BotDockingMgr {
             });
         });
     }
+    /**
+     * 获取Bot实例
+     */
     static getBot(name) {
         return allOneBotDockingInstance.get(name);
+    }
+    /**
+     * 获取迭代器(包含所有已登入账号)
+     */
+    static getBotMapIters() {
+        return allOneBotDockingInstance.entries();
     }
 }
 exports.BotDockingMgr = BotDockingMgr;
