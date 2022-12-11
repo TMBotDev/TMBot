@@ -83,6 +83,9 @@ OneBot标准的TMBot插件加载框架（WebsocketClient） 推荐使用go-cqhtt
 1. 安装node.js(Linux上还要安装npm)
 2. 使用start脚本安装框架所需依赖
 3. 您还需要go-cqhttp或其他OntBot协议的机器人作为后端(go-cqhttp链接：https://github.com/Mrs4s/go-cqhttp)
+4. 前往下载插件模板：https://github.com/TMBotDev/TMBot-Plugin-Demo.git
+5. 将插件安装进TMBot中
+6. 开始你的开发之旅
 
 #### **安装步骤**
 
@@ -155,16 +158,16 @@ FileTree:
 例如:
 ```tools/data: JsonConfigFileClass,IniConfigFileClass,
 tools/file: FileClass.readFrom,
-writeLine,
-createDir,
-delete,
-exists,
-copy,
-move,
-rename,
-getFileSize,
-checkIsDir,
-getFilesList,
+            FileClass.writeLine,
+            FileClass.createDir,
+            FileClass.delete,
+            FileClass.exists,
+            FileClass.copy,
+            FileClass.move,
+            FileClass.rename,
+            FileClass.getFileSize,
+            FileClass.checkIsDir,
+            FileClass.getFilesList,
 tools/logger: Logger
 ```
 
