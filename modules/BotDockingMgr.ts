@@ -18,7 +18,10 @@ export class BotDockingMgr {
             let lock = true;
             let res = false;
             wsc.events.onClose.on(function reConnect(_code, _desc) {
-                if (reConnectCount != 0 && !isFirst) {
+                if (isFirst || d.isClosing) {
+                    return;
+                }
+                if (reConnectCount != 0) {
                     let time = (reConnectTime > 0 ? reConnectTime : 0);
                     logger.warn(`WS连接断开!根据配置文件所述,将在${time}秒后重连!(${(reConnectC + 1)}/${reConnectCount})`);
                     let timeout = (time * 1000) || 1;

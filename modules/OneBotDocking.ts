@@ -767,7 +767,8 @@ export class OneBotDocking {
     private _LoginInfo = { "user_id": -1, "nickname": "Unknown" };
     // public MsgIDMap = new Map<number, MsgInfo>();
     private _RequestCallbacks: { [key: string]: ((obj: { "status": status, "retcode": retcode, "data": null | any }) => void) } = {};
-    private isClosing: boolean = false;
+    /**是否正在关闭*/
+    public isClosing: boolean = false;
     private _Friends = new Map<number, FriendInfo>();
     private _Groups = new Map<number, GroupInfo>();
     private _IsInitd = false;//是否成功初始化

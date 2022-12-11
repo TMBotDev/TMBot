@@ -1,4 +1,4 @@
-if [ ! -d "node_modules" ];then
+if [ ! -d "./node_modules/" ];then
     echo "依赖不存在！将开始安装依赖"
     echo "按任意键开始安装依赖"
     a=114514
