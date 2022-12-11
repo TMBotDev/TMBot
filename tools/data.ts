@@ -87,7 +87,7 @@ export class JsonConfigFileClass {
         if (!this.#isTasking) {
             this.#isTasking = true;
             process.nextTick(() => {
-                this.#TextCache = JSON.stringify(this.#Cache);
+                this.#TextCache = JSON.stringify(this.#Cache, null, 2);
                 FileClass.writeTo(this.#Path, this.#TextCache);
                 this.#isTasking = false;
             });
