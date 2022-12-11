@@ -23,7 +23,7 @@ jobs:
       - name: Build TMBot    
         run: |
          mkdir build
-         tsc --outDir ./build/
+         tsc --outDir ./build/ -watch false
       - name: Copy Files
         run: |
           cp start.bat ./build/
