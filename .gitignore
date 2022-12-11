@@ -3,4 +3,3 @@ plugins/*
 config
 logs
 package-lock.json
-*.js
