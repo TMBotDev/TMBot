@@ -1,0 +1,36 @@
+name: 'build-repo'
+on: # rebuild any PRs and main branch changes
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build: # make sure build/ci work properly
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3.0.2
+        with:
+          fetch-depth: 1
+          #submodules: 'true'
+      - name: Install Requirements    
+        run: |
+          npm i
+          npm install typescript
+      - name: Build TMBot    
+        run: |
+         mkdir build
+         tsc --outDir ./build/
+      - name: Copy Files
+        run: |
+          cp start.bat ./build/
+          cp start.sh ./build/
+          cp package.json ./build/
+      - name: Upload TMBot
+        uses: actions/upload-artifact@v3.1.0
+        with:
+          name: TMBot
+          path: ${{ github.workspace }}\build\
