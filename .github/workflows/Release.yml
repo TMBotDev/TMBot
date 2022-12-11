@@ -30,16 +30,11 @@ jobs:
         with:
           path: ./package.json
           property: version
-
       - name: Read Description
         id: description
         uses: juliangruber/read-file-action@v1
         with:
           path: ./description.txt
-      - name: Pack Release
-        id: pack
-        working-directory: ${{ env.GITHUB_WORKSPACE }}
-        run: 7z a TMBot-Release.zip -r
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@latest
@@ -51,8 +46,6 @@ jobs:
           body: ${{steps.description.outputs.content}}
           draft: false
           prerelease: false
-          artifacts: |
-            ${{ env.GITHUB_WORKSPACE }}\build\TMBot-Release.zip
             
 
 
