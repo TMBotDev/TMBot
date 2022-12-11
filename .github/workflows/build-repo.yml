@@ -23,15 +23,12 @@ jobs:
       - name: Build TMBot    
         run: |
          mkdir build
-         ls
          tsc --outDir ./build/ -watch false
-         ls ./build/
       - name: Copy Files
         run: |
           cp start.bat ./build/
           cp start.sh ./build/
           cp package.json ./build/
-          ls ./build/
       - name: Upload TMBot
         uses: actions/upload-artifact@v3.1.0
         with:
