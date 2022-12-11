@@ -2,3 +2,5 @@ node_modules
 plugins/*
 config
 logs
+package-lock.json
+build
