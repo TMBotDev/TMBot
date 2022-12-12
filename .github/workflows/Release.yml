@@ -49,17 +49,16 @@ jobs:
         with:
           name: TMBot
           path: TMBot-Release.zip
-    #  - name: Release
-    #   uses: softprops/action-gh-release@v1
-    #     if: startsWith(github.ref, 'refs/tags/')
-    #     with:
-    #       body_path: ${{ github.workspace }}-CHANGELOG.txt
-    #       token: ${{ secrets.RELEASE_TOKEN }}
-    #       files: |
-    #         Release.txt
-    #         LICENSE
-    #     env:
-    #       GITHUB_REPOSITORY: TMBotDev/TMBot
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          body_path: ${{ github.workspace }}/Release-Description.txt
+          token: ${{ secrets.RELEASE_TOKEN }}
+          files: |
+            ./build/TMBot-Release.zip
+        env:
+          GITHUB_REPOSITORY: TMBotDev/TMBot
 
             
 
