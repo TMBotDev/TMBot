@@ -67,16 +67,15 @@ OneBot标准的TMBot插件加载框架（WebsocketClient） 推荐使用go-cqhtt
 ```
 {
     "RoBot": {  //机器人名字
-        "Websocket": "ws://127.0.0.1:22",  //你的ws地址和端口
-        "ReConnectCount": 5,  //重连次数，-1为不限
-        "ReConnectTime": 4,  //重连间隔时间，单位为秒
-        "MsgLog": true,  //消息日志是否启用
-        "NoticeLog": true,  
+        "Websocket": "ws://127.0.0.1:22",      //你的ws地址和端口
+        "ReConnectCount": 5,                   //重连次数，-1为不限
+        "ReConnectTime": 4,                    //重连间隔时间，单位为秒
+        "MsgLog": true,                        //消息日志是否启用
+        "NoticeLog": true,                     //通知日志是否启用
         "LogFile": "RoBotLog-{Y}-{M}-{D}.log"  //日志文件名格式，Y为年，M为月，D为日
     }
 }
 ```
-
 
 #### 开发前的配置要求
 
@@ -146,10 +145,14 @@ FileTree:
 #### 开发注意事项
 
 此框架可以运行于LiteLoaderBDS与NodeJS上
-#### 但是请要注意，在```NodeJS环境上运行```，根目录是直接作用于```项目目录的```
-#### 而在```LiteLoaderBDS```上，根目录是作用于```BDS根目录```上的！
-#### 所以可以使用 ```[FileClass.getStandardPath(<相对目录>)]``` 来获取作用于项目路径的绝对路径来避免此类BUG出现
-#### ```TIPS: TMBot的基础接口实现已经全部使用了上述方法，所以可以直接传入作用于项目的相对路径```
+
+**但是请要注意，在```NodeJS环境上运行```，根目录是直接作用于```项目目录的```**
+
+**而在```LiteLoaderBDS```上，根目录是作用于```BDS根目录```上的！**
+
+**所以可以使用 ```[FileClass.getStandardPath(<相对目录>)]``` 来获取作用于项目路径的绝对路径来避免此类BUG出现**
+
+*```TIPS: TMBot的基础接口实现已经全部使用了上述方法，所以可以直接传入作用于项目的相对路径```*
 
 ### 您还需要注意的是
 
@@ -177,7 +180,7 @@ tools/logger: Logger
 5. TMBot会自行检索插件的package.json所规定的依赖是否在插件目录是否完整
 6. TMBot插件发行形式必须以Node包的形式发布!不要包含TMBot的任何东西!不要修改源代码!必须可以直接解压至plugins目录运行!
 7. TMBot框架的插件是以Node包形式存在， 所以你可以在你的项目里随意引用所有模块
-(请不要随意"使用"内部功能实现的模块) 如：```OneBotDocking， PluginLoader，Websocket```。
+(请不要随意"使用"内部功能实现的模块) 如：```OneBotDocking```， ```PluginLoader```，```Websocket```。
 虽然不可以使用，但是可以引用它内部的方法作为参数类型
 
 
