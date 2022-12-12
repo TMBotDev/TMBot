@@ -24,6 +24,14 @@ jobs:
           cp start.bat ./build/
           cp start.sh ./build/
           cp package.json ./build/
+      - name: Pack Release
+        id: pack
+        working-directory: ${{ env.GITHUB_WORKSPACE }}
+        run: |
+          cd build
+          7z a TMBot-Release.zip -r
+          ls ../
+          ls 
       - name: Read Version
         id: version
         uses: ashley-taylor/read-json-property-action@v1.0
@@ -35,17 +43,18 @@ jobs:
         uses: juliangruber/read-file-action@v1
         with:
           path: ./description.txt
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.Release_TOKEN }}
-        with:
-          tag_name: v${{steps.version.outputs.value}}
-          release_name: v${{steps.version.outputs.value}}
-          body: ${{steps.description.outputs.content}}
-          draft: false
-          prerelease: false
+    #  - name: Release
+    #   uses: softprops/action-gh-release@v1
+    #     if: startsWith(github.ref, 'refs/tags/')
+    #     with:
+    #       body_path: ${{ github.workspace }}-CHANGELOG.txt
+    #       token: ${{ secrets.RELEASE_TOKEN }}
+    #       files: |
+    #         Release.txt
+    #         LICENSE
+    #     env:
+    #       GITHUB_REPOSITORY: TMBotDev/TMBot
+
             
 
 
