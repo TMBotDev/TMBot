@@ -145,6 +145,7 @@ FileTree:
 #### 开发注意事项
 
 此框架可以运行于LiteLoaderBDS与NodeJS上
+
 **但是请要注意，在```NodeJS环境上运行```，根目录是直接作用于```项目目录的```**
 
 **而在```LiteLoaderBDS```上，根目录是作用于```BDS根目录```上的！**
@@ -179,7 +180,7 @@ tools/logger: Logger
 5. TMBot会自行检索插件的package.json所规定的依赖是否在插件目录是否完整
 6. TMBot插件发行形式必须以Node包的形式发布!不要包含TMBot的任何东西!不要修改源代码!必须可以直接解压至plugins目录运行!
 7. TMBot框架的插件是以Node包形式存在， 所以你可以在你的项目里随意引用所有模块
-(请不要随意"使用"内部功能实现的模块) 如：```OneBotDocking， PluginLoader，Websocket```。
+(请不要随意"使用"内部功能实现的模块) 如：```OneBotDocking```， ```PluginLoader```，```Websocket```。
 虽然不可以使用，但是可以引用它内部的方法作为参数类型
 
 
