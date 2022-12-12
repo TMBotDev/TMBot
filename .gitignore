@@ -1,3 +1,6 @@
+.gitee
+.vscode
+build
 node_modules
 plugins/*
 config
