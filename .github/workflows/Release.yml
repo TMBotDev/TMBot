@@ -30,17 +30,12 @@ jobs:
         run: |
           cd build
           7z a TMBot-Release.zip -r
-      - name: Read Version
+      - name: Get version
         id: version
-        uses: ashley-taylor/read-json-property-action@v1.0
-        with:
-          path: ./package.json
-          property: version
-      - name: Upload TMBot
-        uses: actions/upload-artifact@v3.1.0
-        with:
-          name: TMBot
-          path: TMBot-Release.zip
+        uses: notiz-dev/github-action-json-property@release
+        with: 
+           path: 'package.json'
+           prop_path: "version"
       - name: Upload TMBot
         uses: actions/upload-artifact@v3.1.0
         with:
@@ -49,8 +44,8 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          body_path: ${{ github.workspace }}/Release-Description.txt
-          tag_name: v${{steps.version.outputs.value}}
+          body_path: ${{ github.workspace }}/Release-Description.md
+          tag_name: v${{steps.version.outputs.prop}}
           token: ${{ secrets.RELEASE_TOKEN }}
           files: |
             ./build/TMBot-Release.zip
