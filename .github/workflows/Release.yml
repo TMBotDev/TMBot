@@ -53,6 +53,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           body_path: ${{ github.workspace }}/Release-Description.txt
+          tag_name: v${{steps.version.outputs.value}}
           token: ${{ secrets.RELEASE_TOKEN }}
           files: |
             ./build/TMBot-Release.zip
