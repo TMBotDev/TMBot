@@ -31,6 +31,7 @@ jobs:
           cd build
           7z a TMBot-Release.zip -r
           ls ../
+          echo -------------
           ls 
       - name: Read Version
         id: version
