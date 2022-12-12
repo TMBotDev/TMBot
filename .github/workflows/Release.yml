@@ -30,9 +30,6 @@ jobs:
         run: |
           cd build
           7z a TMBot-Release.zip -r
-          ls ../
-          echo -------------
-          ls 
       - name: Read Version
         id: version
         uses: ashley-taylor/read-json-property-action@v1.0
@@ -44,6 +41,11 @@ jobs:
         with:
           name: TMBot
           path: TMBot-Release.zip
+      - name: Upload TMBot
+        uses: actions/upload-artifact@v3.1.0
+        with:
+          name: TMBot
+          path: ./build/
       - name: Release
         uses: softprops/action-gh-release@v1
         with:

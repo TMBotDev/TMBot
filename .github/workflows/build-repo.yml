@@ -3,10 +3,12 @@ on: # rebuild any PRs and main branch changes
   pull_request:
     branches:
       - main
+      - beta
   workflow_dispatch:
   push:
     branches:
       - main
+      - beta
 
 jobs:
   build: # make sure build/ci work properly
