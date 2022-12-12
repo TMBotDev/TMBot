@@ -1,0 +1,64 @@
+name: 'Release'
+on: # rebuild any PRs and main branch changes
+  push:
+    branches:
+      - Auto-Release
+
+jobs:
+  build: # make sure build/ci work properly
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - name: Install Requirements    
+        run: |
+          npm i
+          npm install typescript
+      - name: Build TMBot    
+        run: |
+         mkdir build
+         tsc --outDir ./build/ -watch false
+      - name: Copy Files
+        run: |
+          cp start.bat ./build/
+          cp start.sh ./build/
+          cp package.json ./build/
+      - name: Pack Release
+        id: pack
+        working-directory: ${{ env.GITHUB_WORKSPACE }}
+        run: |
+          cd build
+          7z a TMBot-Release.zip -r
+      - name: Read Version
+        id: version
+        uses: ashley-taylor/read-json-property-action@v1.0
+        with:
+          path: ./package.json
+          property: version
+      - name: Upload TMBot
+        uses: actions/upload-artifact@v3.1.0
+        with:
+          name: TMBot
+          path: TMBot-Release.zip
+      - name: Upload TMBot
+        uses: actions/upload-artifact@v3.1.0
+        with:
+          name: TMBot
+          path: ./build/
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: ${{ github.workspace }}/Release-Description.txt
+          tag_name: v${{steps.version.outputs.value}}
+          token: ${{ secrets.RELEASE_TOKEN }}
+          files: |
+            ./build/TMBot-Release.zip
+        env:
+          GITHUB_REPOSITORY: TMBotDev/TMBot
+
+            
+
+
+
+
