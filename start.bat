@@ -1,12 +1,12 @@
 @echo off
 
 if exist node_modules (
-    echo ä¾èµ–å­˜åœ¨!å¼€å§‹è¿è¡Œ!
+    echo ÒÀÀµ´æÔÚ!¿ªÊ¼ÔËÐÐ!
     node app.js
     pause
     exit
 ) else (
-    echo ä¾èµ–ä¸å­˜åœ¨!æŒ‰ä¸‹ä»»æ„é”®å¼€å§‹å®‰è£…!(è¯·ç¡®è®¤nodeçŽ¯å¢ƒ)
+    echo ÒÀÀµ²»´æÔÚ!°´ÏÂÈÎÒâ¼ü¿ªÊ¼°²×°!(ÇëÈ·ÈÏnode»·¾³)
     pause
     npm i
 )
