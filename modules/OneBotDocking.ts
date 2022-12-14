@@ -350,6 +350,12 @@ export class MsgInfo {
     delete(_this: OneBotDocking) {
         return _this.deleteMsg(this.obj.message_id);
     }
+    get originalContent() {
+        return this.obj.message.replace(/&amp\;/g, "&")
+            .replace(/&#91\;/g, "[")
+            .replace(/&#93\;/g, "]")
+            .replace(/&#44\;/g, ",");
+    }
     get msg() { return this.obj.message; }
     get raw() { return this.obj.raw_message; }
     get msg_id() { return this.obj.message_id; }
@@ -532,7 +538,7 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
                 member,
                 msg
             );
-            this.conf["MsgLog"] && this.logger.info(`[${group.group_name}(${group.group_id})] ${sender.nickname} >> ${msg.msg}`);
+            this.conf["MsgLog"] && this.logger.info(`[${group.group_name}(${group.group_id})] ${sender.nickname} >> ${msg.originalContent}`);
             break;
         }
         // case "discuss": {
