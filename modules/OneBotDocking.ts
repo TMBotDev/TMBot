@@ -1,5 +1,5 @@
 import path from "path";
-import { Logger, LoggerLevel } from "../tools/logger";
+import { Logger } from "../tools/logger";
 import { Event, WebsocketClient } from "./WebSocket";
 
 
@@ -31,6 +31,12 @@ export class FriendInfo {
         "nickname": string,
         "remark": string
     }) { }
+    /**
+     * 向好友发送消息(方便函数)
+     */
+    sendMsg(_this: OneBotDocking, msg: string) {
+        return _this.sendMsg("private", this.obj.user_id, msg);
+    }
     get user_id() { return this.obj.user_id; }
     get nickname() { return this.obj.nickname; }
     set nickname(a) { this.obj.nickname = a; }
@@ -40,10 +46,17 @@ export class FriendInfo {
 
 export class UnidirectionalFriendInfo {
     constructor(private obj: {
-        "user_id": string,
+        "user_id": number,
         "nickname": string,
         "source": string
     }) { }
+    /**
+     * 向单向好友发送消息(方便函数)
+     * 可能失败
+     */
+    sendMsg(_this: OneBotDocking, msg: string) {
+        return _this.sendMsg("private", this.obj.user_id, msg);
+    }
     get user_id() { return this.obj.user_id; }
     get nickname() { return this.obj.nickname; }
     get source() { return this.obj.source; }
@@ -57,6 +70,17 @@ export class SenderInfo {
             "sex": string,	    //性别，male 或 female 或 unknown
             "age": number	    //年龄
         }) { }
+    /**获取好友对象(可能失败)*/
+    getFriend(_this: OneBotDocking) {
+        return _this.getFriendInfoSync(this.obj.user_id);
+    }
+    /**
+     * 向TA发送消息(方便函数)
+     * 极有可能失败,谨慎使用
+     */
+    sendMsg(_this: OneBotDocking, msg: string) {
+        return _this.sendMsg("private", this.obj.user_id, msg);
+    }
     get user_id() { return this.obj.user_id; }
     get nickname() { return this.obj.nickname; }
     set nickname(a) { this.obj.nickname = a; }
@@ -113,6 +137,12 @@ export class GroupInfo {
         let ow = this._Owner!;
         _this.logger.info(`初始化群成员信息: ${this.obj.group_name}(${this.obj.group_id}) 成功!群主: ${ow.card || ow.nickname}(${ow.user_id}),共计 ${this._Members.size} 个群成员, ${this._Admins.size} 个管理员`);
         // logger.info(JSON.stringify(data, null, 2));
+    }
+    /**
+     * 方便函数,快捷发送群消息
+     */
+    sendMsg(_this: OneBotDocking, msg: string) {
+        return _this.sendMsg("group", this.obj.group_id, msg);
     }
     async getBaseData(_this: OneBotDocking) {
         let val = await _this.getGroupInfo(this.obj.group_id, false);
@@ -207,6 +237,28 @@ export class GroupMemberInfo {
         "card_changeable": boolean,
         "shut_up_timestamp": number | undefined,
     }) { }
+    /**
+     * 设置禁言
+     * (可能无权限失败)
+     * @param time 秒,0取消
+     */
+    setMute(_this: OneBotDocking, time: number) {
+        return _this.groupMute(this.obj.group_id, this.obj.user_id, time);
+    }
+    /**
+     * 方便函数
+     * 获取这个群成员对应的群对象
+     */
+    getGroup(_this: OneBotDocking) {
+        return _this.getGroupInfoSync(this.obj.group_id);
+    }
+    /**
+     * 方便函数
+     * 可能发送失败
+     */
+    sendMsg(_this: OneBotDocking, msg: string) {
+        return _this.sendMsg("private", this.obj.user_id, msg);
+    }
     get group_id() { return this.obj.group_id; }
     get user_id() { return this.obj.user_id; }
     get nickname() { return this.obj.nickname; }
@@ -243,6 +295,13 @@ export class StrangerInfo {
         "level": number | undefined,
         "login_days": number | undefined
     }) { }
+    /**
+     * 方便函数
+     * 可能发送失败
+     */
+    sendMsg(_this: OneBotDocking, msg: string) {
+        return _this.sendMsg("private", this.obj.user_id, msg);
+    }
     get user_id() { return this.obj.user_id; }
     get nickname() { return this.obj.nickname; }
     set nickname(a) { this.obj.nickname = a; }
@@ -260,11 +319,21 @@ export class StrangerInfo {
 }
 
 export class AnonymousInfo {
-    constructor(private obj: {
-        "id": number,
-        "name": string,
-        "flag": string
-    }) { }
+    constructor(
+        private group_id: number,
+        private obj: {
+            "id": number,
+            "name": string,
+            "flag": string
+        }) { }
+    /**
+     * 设置禁言
+     * (可能无权限失败)
+     * @param time 秒,0取消
+     */
+    setMute(_this: OneBotDocking, time: number) {
+        return _this.groupMuteAnonymous(this.group_id, this.obj.flag, time);
+    }
     get id() { return this.obj.id; }
     get name() { return this.obj.name; }
     get flag() { return this.obj.flag; }
@@ -278,6 +347,9 @@ export class MsgInfo {
         "raw_message": string,
         "message_id": number
     }) { }
+    delete(_this: OneBotDocking) {
+        return _this.deleteMsg(this.obj.message_id);
+    }
     get msg() { return this.obj.message; }
     get raw() { return this.obj.raw_message; }
     get msg_id() { return this.obj.message_id; }
@@ -448,7 +520,7 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
             // console.log(obj);
 
             if (obj.sub_type == "anonymous") {
-                member = new AnonymousInfo(obj.anonymous);
+                member = new AnonymousInfo(obj.group_id, obj.anonymous);
             } else {
                 member = (await group.refreshMemberInfo(this, sender.user_id))!;
                 // member = group.senderGetMember(sender)!;
