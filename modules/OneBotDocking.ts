@@ -1,5 +1,5 @@
 import path from "path";
-import { Logger, LoggerLevel } from "../tools/logger";
+import { Logger } from "../tools/logger";
 import { Event, WebsocketClient } from "./WebSocket";
 
 
@@ -31,6 +31,12 @@ export class FriendInfo {
         "nickname": string,
         "remark": string
     }) { }
+    /**
+     * 向好友发送消息(方便函数)
+     */
+    sendMsg(_this: OneBotDocking, msg: string) {
+        return _this.sendMsg("private", this.obj.user_id, msg);
+    }
     get user_id() { return this.obj.user_id; }
     get nickname() { return this.obj.nickname; }
     set nickname(a) { this.obj.nickname = a; }
@@ -40,10 +46,17 @@ export class FriendInfo {
 
 export class UnidirectionalFriendInfo {
     constructor(private obj: {
-        "user_id": string,
+        "user_id": number,
         "nickname": string,
         "source": string
     }) { }
+    /**
+     * 向单向好友发送消息(方便函数)
+     * 可能失败
+     */
+    sendMsg(_this: OneBotDocking, msg: string) {
+        return _this.sendMsg("private", this.obj.user_id, msg);
+    }
     get user_id() { return this.obj.user_id; }
     get nickname() { return this.obj.nickname; }
     get source() { return this.obj.source; }
@@ -57,6 +70,17 @@ export class SenderInfo {
             "sex": string,	    //性别，male 或 female 或 unknown
             "age": number	    //年龄
         }) { }
+    /**获取好友对象(可能失败)*/
+    getFriend(_this: OneBotDocking) {
+        return _this.getFriendInfoSync(this.obj.user_id);
+    }
+    /**
+     * 向TA发送消息(方便函数)
+     * 极有可能失败,谨慎使用
+     */
+    sendMsg(_this: OneBotDocking, msg: string) {
+        return _this.sendMsg("private", this.obj.user_id, msg);
+    }
     get user_id() { return this.obj.user_id; }
     get nickname() { return this.obj.nickname; }
     set nickname(a) { this.obj.nickname = a; }
@@ -113,6 +137,12 @@ export class GroupInfo {
         let ow = this._Owner!;
         _this.logger.info(`初始化群成员信息: ${this.obj.group_name}(${this.obj.group_id}) 成功!群主: ${ow.card || ow.nickname}(${ow.user_id}),共计 ${this._Members.size} 个群成员, ${this._Admins.size} 个管理员`);
         // logger.info(JSON.stringify(data, null, 2));
+    }
+    /**
+     * 方便函数,快捷发送群消息
+     */
+    sendMsg(_this: OneBotDocking, msg: string) {
+        return _this.sendMsg("group", this.obj.group_id, msg);
     }
     async getBaseData(_this: OneBotDocking) {
         let val = await _this.getGroupInfo(this.obj.group_id, false);
@@ -207,6 +237,28 @@ export class GroupMemberInfo {
         "card_changeable": boolean,
         "shut_up_timestamp": number | undefined,
     }) { }
+    /**
+     * 设置禁言
+     * (可能无权限失败)
+     * @param time 秒,0取消
+     */
+    setMute(_this: OneBotDocking, time: number) {
+        return _this.groupMute(this.obj.group_id, this.obj.user_id, time);
+    }
+    /**
+     * 方便函数
+     * 获取这个群成员对应的群对象
+     */
+    getGroup(_this: OneBotDocking) {
+        return _this.getGroupInfoSync(this.obj.group_id);
+    }
+    /**
+     * 方便函数
+     * 可能发送失败
+     */
+    sendMsg(_this: OneBotDocking, msg: string) {
+        return _this.sendMsg("private", this.obj.user_id, msg);
+    }
     get group_id() { return this.obj.group_id; }
     get user_id() { return this.obj.user_id; }
     get nickname() { return this.obj.nickname; }
@@ -243,6 +295,13 @@ export class StrangerInfo {
         "level": number | undefined,
         "login_days": number | undefined
     }) { }
+    /**
+     * 方便函数
+     * 可能发送失败
+     */
+    sendMsg(_this: OneBotDocking, msg: string) {
+        return _this.sendMsg("private", this.obj.user_id, msg);
+    }
     get user_id() { return this.obj.user_id; }
     get nickname() { return this.obj.nickname; }
     set nickname(a) { this.obj.nickname = a; }
@@ -260,11 +319,21 @@ export class StrangerInfo {
 }
 
 export class AnonymousInfo {
-    constructor(private obj: {
-        "id": number,
-        "name": string,
-        "flag": string
-    }) { }
+    constructor(
+        private group_id: number,
+        private obj: {
+            "id": number,
+            "name": string,
+            "flag": string
+        }) { }
+    /**
+     * 设置禁言
+     * (可能无权限失败)
+     * @param time 秒,0取消
+     */
+    setMute(_this: OneBotDocking, time: number) {
+        return _this.groupMuteAnonymous(this.group_id, this.obj.flag, time);
+    }
     get id() { return this.obj.id; }
     get name() { return this.obj.name; }
     get flag() { return this.obj.flag; }
@@ -278,6 +347,15 @@ export class MsgInfo {
         "raw_message": string,
         "message_id": number
     }) { }
+    delete(_this: OneBotDocking) {
+        return _this.deleteMsg(this.obj.message_id);
+    }
+    get originalContent() {
+        return this.obj.message.replace(/&amp\;/g, "&")
+            .replace(/&#91\;/g, "[")
+            .replace(/&#93\;/g, "]")
+            .replace(/&#44\;/g, ",");
+    }
     get msg() { return this.obj.message; }
     get raw() { return this.obj.raw_message; }
     get msg_id() { return this.obj.message_id; }
@@ -448,7 +526,7 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
             // console.log(obj);
 
             if (obj.sub_type == "anonymous") {
-                member = new AnonymousInfo(obj.anonymous);
+                member = new AnonymousInfo(obj.group_id, obj.anonymous);
             } else {
                 member = (await group.refreshMemberInfo(this, sender.user_id))!;
                 // member = group.senderGetMember(sender)!;
@@ -460,7 +538,7 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
                 member,
                 msg
             );
-            this.conf["MsgLog"] && this.logger.info(`[${group.group_name}(${group.group_id})] ${sender.nickname} >> ${msg.msg}`);
+            this.conf["MsgLog"] && this.logger.info(`[${group.group_name}(${group.group_id})] ${sender.nickname} >> ${msg.originalContent}`);
             break;
         }
         // case "discuss": {
@@ -773,37 +851,39 @@ export class OneBotDocking {
     private _Groups = new Map<number, GroupInfo>();
     private _IsInitd = false;//是否成功初始化
 
+    private DelayLogger = { "error": (...msg: any[]) => { this.logger.error(...msg); } };
+
     // public ShareData = new ShareData();
 
     private _events = {
-        "onRawMessage": new Event<(rawInfo: string, ori: (isExecute: boolean, raw: string) => void) => void>(),
-        "onInitSuccess": new Event<() => void>(),
-        "onClientClose": new Event<() => void>(),
-        "onClientStatusChanged": new Event<(device: DeviceInfo, online: boolean) => void>(),
-        "onPrivateMsg": new Event<(senderInfo: SenderInfo, sub_type: "friend" | "group" | "discuss" | "other", msgInfo: MsgInfo) => void>(),
-        "onGroupMsg": new Event<(groupInfo: GroupInfo, sub_type: "normal" | "anonymous" | "notice", groupMemberInfo: GroupMemberInfo | AnonymousInfo, msgInfo: MsgInfo) => void>(),
+        "onRawMessage": new Event<(rawInfo: string, ori: (isExecute: boolean, raw: string) => void) => void>(this.DelayLogger),
+        "onInitSuccess": new Event<() => void>(this.DelayLogger),
+        "onClientClose": new Event<() => void>(this.DelayLogger),
+        "onClientStatusChanged": new Event<(device: DeviceInfo, online: boolean) => void>(this.DelayLogger),
+        "onPrivateMsg": new Event<(senderInfo: SenderInfo, sub_type: "friend" | "group" | "discuss" | "other", msgInfo: MsgInfo) => void>(this.DelayLogger),
+        "onGroupMsg": new Event<(groupInfo: GroupInfo, sub_type: "normal" | "anonymous" | "notice", groupMemberInfo: GroupMemberInfo | AnonymousInfo, msgInfo: MsgInfo) => void>(this.DelayLogger),
         // "onDiscussMsg": new Event<(discussInfo: DiscussInfo, senderInfo: SenderInfo, msgInfo: MsgInfo) => void>(),
-        "onGroupUploadFile": new Event<(groupInfo: GroupInfo, groupMemberInfo: GroupMemberInfo, fileInfo: FileInfo) => void>(),
-        "onGroupAdminChange": new Event<(groupInfo: GroupInfo, memberInfo: GroupMemberInfo, sub_type: "set" | "unset") => void>(),
+        "onGroupUploadFile": new Event<(groupInfo: GroupInfo, groupMemberInfo: GroupMemberInfo, fileInfo: FileInfo) => void>(this.DelayLogger),
+        "onGroupAdminChange": new Event<(groupInfo: GroupInfo, memberInfo: GroupMemberInfo, sub_type: "set" | "unset") => void>(this.DelayLogger),
         /**
          * @note leave//主动离开,kick//被踢,//kick_me//登录号被踢
          */
-        "onGroupLeave": new Event<(groupInfo: GroupInfo, sub_type: "leave" | "kick" | "kick_me", memberInfo: GroupMemberInfo, operator: StrangerInfo | undefined) => void>(),
-        "onGroupJoin": new Event<(groupInfo: GroupBaseInfo, isInvite: boolean, strangerInfo: StrangerInfo, operator: StrangerInfo | undefined) => void>(),
-        "onGroupWholeMute": new Event<(group: GroupInfo, isUnMute: boolean, operator: GroupMemberInfo) => void>(),
-        "onGroupMute": new Event<(groupInfo: GroupInfo, isUnMute: boolean, memberInfo: GroupMemberInfo, operator: GroupMemberInfo) => void>(),
-        "onGroupRecall": new Event<(groupInfo: GroupInfo, memberInfo: GroupMemberInfo, operator: GroupMemberInfo, msg: MsgInfo) => void>(),
-        "onFriendAdd": new Event<(strangerInfo: StrangerInfo) => void>(),
-        "onFriendRecall": new Event<(friendInfo: FriendInfo, msg: MsgInfo) => void>(),
-        "onFriendRequestAdd": new Event<(strangerInfo: StrangerInfo, comment: string, flag: string) => void>(),
-        "onGroupRequestJoin": new Event<(groupInfo: GroupBaseInfo, isInviteSelf: boolean, strangerInfo: StrangerInfo, comment: string, flag: string) => void>(),
-        "onGroupPoke": new Event<(group: GroupInfo, sender: GroupMemberInfo, target: GroupMemberInfo) => void>(),
-        "onFriendPoke": new Event<(sender: FriendInfo) => void>(),
-        "onGroupRedPacketLuckKing": new Event<(group: GroupInfo, sender: GroupMemberInfo, target: GroupMemberInfo) => void>(),
-        "onGroupHonorChanged": new Event<(group: GroupInfo, honor: HonorType, member: GroupMemberInfo) => void>(),
-        "onGroupCardChanged": new Event<(group: GroupInfo, member: GroupMemberInfo, card: string) => void>(),
-        "onReceiveOfflineFile": new Event<(stranger: StrangerInfo, offlineFile: OfflineFileInfo) => void>(),
-        "onGroupEssenceMsgChanged": new Event<(group: GroupInfo, sub_type: "add" | "delete", sender: GroupMemberInfo, operator: GroupMemberInfo, msg: MsgInfo) => void>()
+        "onGroupLeave": new Event<(groupInfo: GroupInfo, sub_type: "leave" | "kick" | "kick_me", memberInfo: GroupMemberInfo, operator: StrangerInfo | undefined) => void>(this.DelayLogger),
+        "onGroupJoin": new Event<(groupInfo: GroupBaseInfo, isInvite: boolean, strangerInfo: StrangerInfo, operator: StrangerInfo | undefined) => void>(this.DelayLogger),
+        "onGroupWholeMute": new Event<(group: GroupInfo, isUnMute: boolean, operator: GroupMemberInfo) => void>(this.DelayLogger),
+        "onGroupMute": new Event<(groupInfo: GroupInfo, isUnMute: boolean, memberInfo: GroupMemberInfo, operator: GroupMemberInfo) => void>(this.DelayLogger),
+        "onGroupRecall": new Event<(groupInfo: GroupInfo, memberInfo: GroupMemberInfo, operator: GroupMemberInfo, msg: MsgInfo) => void>(this.DelayLogger),
+        "onFriendAdd": new Event<(strangerInfo: StrangerInfo) => void>(this.DelayLogger),
+        "onFriendRecall": new Event<(friendInfo: FriendInfo, msg: MsgInfo) => void>(this.DelayLogger),
+        "onFriendRequestAdd": new Event<(strangerInfo: StrangerInfo, comment: string, flag: string) => void>(this.DelayLogger),
+        "onGroupRequestJoin": new Event<(groupInfo: GroupBaseInfo, isInviteSelf: boolean, strangerInfo: StrangerInfo, comment: string, flag: string) => void>(this.DelayLogger),
+        "onGroupPoke": new Event<(group: GroupInfo, sender: GroupMemberInfo, target: GroupMemberInfo) => void>(this.DelayLogger),
+        "onFriendPoke": new Event<(sender: FriendInfo) => void>(this.DelayLogger),
+        "onGroupRedPacketLuckKing": new Event<(group: GroupInfo, sender: GroupMemberInfo, target: GroupMemberInfo) => void>(this.DelayLogger),
+        "onGroupHonorChanged": new Event<(group: GroupInfo, honor: HonorType, member: GroupMemberInfo) => void>(this.DelayLogger),
+        "onGroupCardChanged": new Event<(group: GroupInfo, member: GroupMemberInfo, card: string) => void>(this.DelayLogger),
+        "onReceiveOfflineFile": new Event<(stranger: StrangerInfo, offlineFile: OfflineFileInfo) => void>(this.DelayLogger),
+        "onGroupEssenceMsgChanged": new Event<(group: GroupInfo, sub_type: "add" | "delete", sender: GroupMemberInfo, operator: GroupMemberInfo, msg: MsgInfo) => void>(this.DelayLogger)
     }
 
     public logger: Logger;
