@@ -1,20 +1,25 @@
 // import { createServer, IncomingMessage, Server, ServerResponse } from "http";
 // import deasync from "deasync";
 // import * as websocket_ts from "websocket-ts";
+import { isPromise } from "util/types";
 import { WebSocket } from "ws";
 import { Logger } from "../tools/logger";
 
 let logger = new Logger("WebsocketClient", 4);
 
-export class Event<FUNCTION_T extends (...args: any[]) => void>{
+export class Event<FUNCTION_T extends (...args: any[]) => void | Promise<void>>{
     private num = 0;
     constructor(
+        private log: Logger | { "error": (...args: any[]) => any },
         private funcList: { [key: string]: FUNCTION_T } = {}
     ) { }
     on(func: FUNCTION_T) {
         let name = (() => {
             try {
-                return (func.name || (func.toString().match(/function\s*([^(]*)\(/))![1]) + `(${this.num++})`;
+                if (func.name) { return func.name; }
+                let res = ((func.toString().match(/function\s*([^(]*)\(/))![1]).trim();
+                if (res == "*") { throw new Error("NameError"); }
+                return res;
             } catch (_) {
                 return `_NOT_FUNCTION_NAME_(${this.num++})`;
             }
@@ -37,12 +42,19 @@ export class Event<FUNCTION_T extends (...args: any[]) => void>{
         let keys = Object.keys(this.funcList);
         let l = keys.length, i = 0;
         while (i < l) {
-            let func = this.funcList[keys[i]];
+            let funcName = keys[i];
+            let func = this.funcList[funcName];
             try {
-                func(...params);
+                let res = func(...params);
+                if (isPromise(res)) {
+                    res.catch((e) => {
+                        this.log.error(`Error in: ${api}(${funcName})[Promise]`);
+                        this.log.error((e instanceof Error) ? e.stack : e.toString());
+                    });
+                }
             } catch (e) {
-                logger.error(`Error in: ${api}(${keys[i]})`);
-                logger.error((e as Error).stack);
+                this.log.error(`Error in: ${api}(${funcName})`);
+                this.log.error((e instanceof Error) ? e.stack : (e as string).toString());
             }
             i++;
         }
@@ -128,10 +140,10 @@ export class WebsocketClient {
     private _client: WebSocket;
     // private _conn: websocket_ts.Websocket | undefined;
     private _events = {
-        "onStart": new Event<() => void>(),
-        "onMsg": new Event<(msg: string | Buffer, isBuffer: boolean) => void>(),
-        "onClose": new Event<(code: number, desc: string) => void>(),
-        "onError": new Event<(err: Error) => void>()
+        "onStart": new Event<() => void>(logger),
+        "onMsg": new Event<(msg: string | Buffer, isBuffer: boolean) => void>(logger),
+        "onClose": new Event<(code: number, desc: string) => void>(logger),
+        "onError": new Event<(err: Error) => void>(logger)
     }
     constructor(private connect: string) {
         this._client = new WebSocket(connect);
@@ -201,7 +213,7 @@ export class WebsocketClient {
      */
     close(code: number = 1000) {
         // if (!this._conn) { return false; }
-        logger.info("Close Code:", code);
+        // logger.info("Close Code:", code);
         // this._conn.close(code, "NORMAL");
         // this._conn.close(code);
         this._client.close(code);
