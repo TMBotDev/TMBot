@@ -17,63 +17,72 @@ export class BotDockingMgr {
             let isFirst = true;
             let lock = true;
             let res = false;
-            wsc.events.onClose.on(function reConnect(_code, _desc) {
-                if (isFirst || d.isClosing) {
-                    return;
-                }
-                if (reConnectCount != 0) {
-                    let time = (reConnectTime > 0 ? reConnectTime : 0);
-                    logger.warn(`WS连接断开!根据配置文件所述,将在${time}秒后重连!(${(reConnectC + 1)}/${reConnectCount})`);
-                    let timeout = (time * 1000) || 1;
-                    // console.log(timeout)
-                    setTimeout(() => {
-                        wsc.reConnect();
-                        let clear = () => {
-                            wsc.events.onStart.un(s);
-                            wsc.events.onError.un(e);
-                        }
-                        let s = wsc.events.onStart.on(() => {
-                            logger.info(`重连成功!`);
-                            clear();
-                        });
-                        let e = wsc.events.onError.on(() => {
-                            clear();
-                            if (reConnectC == reConnectCount) {
-                                return logger.warn(`重连次数已耗尽!自动关闭...`);
-                            }
-                            if (reConnectCount > 0) {
-                                reConnectC += 1;
-                            }
-                            reConnect(0, "");
-                        });
-                    }, timeout);
-                } else {
-                    logger.warn(`WS连接断开!根据配置文件所述,将不再重连!`);
-                    allOneBotDockingInstance.delete(name);
-                }
+            wsc.events.onStart.on(() => {
+                reConnectC = 0;
+                isFirst = false; lock = false; res = true;
             });
-            wsc.events.onStart.on(() => { isFirst = false; lock = false; res = true; });
-            wsc.events.onError.on(() => {
+            wsc.events.onClose.on((_code, _desc) => {
+                if (d.isClosing || wsc.isDestroy) { return; }
                 if (isFirst) {
                     logger.info(`首次连接失败!将放弃重连!`);
-                    allOneBotDockingInstance.delete(name);
+                    wsc.destroy();
                     lock = false;
+                } else {
+                    if (reConnectCount != 0) {
+                        let time = (reConnectTime > 0 ? reConnectTime : 0);
+                        if (reConnectC >= reConnectCount) {
+                            logger.warn(`重连次数已耗尽!自动关闭...`);
+                            wsc.destroy();
+                            return;
+                        }
+                        logger.warn(`WS连接断开!根据配置文件所述,将在${time}秒后重连!(${(reConnectC + 1)}/${reConnectCount})`);
+                        let timeout = (time * 1000) || 1;
+                        setTimeout(() => {
+                            logger.info("开始重连...");
+                            wsc.reConnect();
+                        }, timeout);
+                        reConnectC += 1;
+                    } else {
+                        logger.warn(`WS连接断开!根据配置文件所述,将不再重连!`);
+                        wsc.destroy();
+                    }
                 }
             });
+            wsc.events.onDestroy.on(() => {
+                logger.debug("销毁连接实例: ", name);
+                allOneBotDockingInstance.delete(name);
+            });
+            logger.debug("添加连接实例: ", name);
             allOneBotDockingInstance.set(name, d);
             let sid = setInterval(() => {
                 if (!lock) { clearInterval(sid); resF(res); }
-            });
+            }, 10);
         });
     }
     /**
      * 获取Bot实例
+     * @note 请在你正在使用的WS实例销毁时一并结束你的插件的一切工作,例子:
+     * @code ```
+     * let tmp = BotDockingMgr.getBot("xxx");
+     * let sid = setInterval(()=>{},1000);
+     * tmp.Client.events.onDestroy.on(()=>{
+     *     clearInterval(sid);
+     * })
+     * ```
      */
     static getBot(name: string) {
         return allOneBotDockingInstance.get(name);
     }
     /**
-     * 获取迭代器(包含所有已登入账号)
+     * 获取迭代器(包含所有账号)
+     * @note 请在你正在使用的WS实例销毁时一并结束你的插件的一切工作,例子:
+     * @code ```
+     * let tmp = BotDockingMgr.getBot("xxx");
+     * let sid = setInterval(()=>{},1000);
+     * tmp.Client.events.onDestroy.on(()=>{
+     *     clearInterval(sid);
+     * })
+     * ```
      */
     static getBotMapIters() {
         return allOneBotDockingInstance.entries();
