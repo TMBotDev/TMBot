@@ -1,4 +1,5 @@
 # TMBot Release Note
+#### Version 1.0.2
 
 ## 更新描述：无
 
@@ -15,3 +16,5 @@ tmp.Client.events.onDestroy.on(()=>{
     clearInterval(sid);
 })
 ```
+
+
