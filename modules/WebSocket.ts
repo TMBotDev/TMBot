@@ -139,11 +139,13 @@ export class Event<FUNCTION_T extends (...args: any[]) => void | Promise<void>>{
 export class WebsocketClient {
     private _client: WebSocket;
     // private _conn: websocket_ts.Websocket | undefined;
+    private isDestroyed = false;
     private _events = {
         "onStart": new Event<() => void>(logger),
         "onMsg": new Event<(msg: string | Buffer, isBuffer: boolean) => void>(logger),
         "onClose": new Event<(code: number, desc: string) => void>(logger),
-        "onError": new Event<(err: Error) => void>(logger)
+        "onError": new Event<(err: Error) => void>(logger),
+        "onDestroy": new Event<() => void>(logger)
     }
     constructor(private connect: string) {
         this._client = new WebSocket(connect);
@@ -155,6 +157,7 @@ export class WebsocketClient {
         return this._client;
     }
     reConnect() {
+        this._client.close();
         this._client = new WebSocket(this.connect);
         this._Init();
     }
@@ -200,6 +203,15 @@ export class WebsocketClient {
 
     }
     get events() { return this._events; }
+    /**
+     * 是否已被销毁
+     */
+    get isDestroy() {
+        return this.isDestroyed;
+    }
+    /**
+     * 发送数据
+     */
     send(msg: string | Buffer) {
         // if (!this._conn) { return false; }
         // this._conn.send(msg, (err) => { if (!!err) { this._events.onError.fire("WebsocketProcessSendError", err); } });
@@ -208,8 +220,6 @@ export class WebsocketClient {
     }
     /**
      * 不要随便使用此api
-     * @param code 
-     * @returns 
      */
     close(code: number = 1000) {
         // if (!this._conn) { return false; }
@@ -217,6 +227,15 @@ export class WebsocketClient {
         // this._conn.close(code, "NORMAL");
         // this._conn.close(code);
         this._client.close(code);
+        return true;
+    }
+    /**
+     * 销毁此对象(销毁不可逆!)
+     */
+    destroy(code: number = 1000) {
+        this._events.onDestroy.fire("WebsocketDestroy");
+        this.isDestroyed = true;
+        this.close(code);
         return true;
     }
 }

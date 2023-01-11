@@ -1,4 +1,5 @@
 import path from "path";
+import { Version } from "../app";
 import { Logger } from "../tools/logger";
 import { Event, WebsocketClient } from "./WebSocket";
 
@@ -846,7 +847,7 @@ export class OneBotDocking {
     // public MsgIDMap = new Map<number, MsgInfo>();
     private _RequestCallbacks: { [key: string]: ((obj: { "status": status, "retcode": retcode, "data": null | any }) => void) } = {};
     /**是否正在关闭*/
-    public isClosing: boolean = false;
+    public _isClosing: boolean = false;
     private _Friends = new Map<number, FriendInfo>();
     private _Groups = new Map<number, GroupInfo>();
     private _IsInitd = false;//是否成功初始化
@@ -893,11 +894,24 @@ export class OneBotDocking {
         public conf: { [key: string]: any }
     ) {
         this._Init();
-        this.logger = new Logger(Name, 4);
+        this.logger = new Logger(Name, (Version.isDebug ? 5 : 4));
         if (!!(conf["LogFile"] || "").trim()) {
             this.logger.setFile(path.join("./logs", conf["LogFile"]));
         }
     }
+
+    /**
+     * 是否初始化完成
+     */
+    get isInitd() { return this._IsInitd; }
+    /**
+     * WS对象是否已被销毁
+     */
+    get WsIsDestroyed() { return this.wsc.isDestroy; }
+    /** 
+     * 客户端是否正在关闭
+     */
+    get isClosing() { return this._isClosing; }
 
     get Client() { return this.wsc; }
     get events() { return this._events; }
@@ -906,16 +920,18 @@ export class OneBotDocking {
     get Friends() { return this._Friends; }
 
     SafeClose(code: number = 1000) {
-        this.isClosing = true;
+        this._isClosing = true;
         let closeTime = Date.now();
+        let close = () => {
+            this.wsc.destroy(code);
+            clearInterval(sid);
+        };
         let sid = setInterval(() => {
             if (Object.keys(this._RequestCallbacks).length == 0) {
-                this.Client.close(code);
-                clearInterval(sid);
-            }
-            if ((Date.now() - closeTime) >= 1000 * 60) {
-                this.logger.warn("关闭操作超时!");
-                this.Client.close(code);
+                close();
+            } else if ((Date.now() - closeTime) >= 1000 * 10) {
+                this.logger.warn("等待服务端返回超时!");
+                close();
             }
         }, 100);
     }
@@ -969,7 +985,7 @@ export class OneBotDocking {
                 }
                 return;
             }
-            if (this.isClosing) { return; }
+            if (this._isClosing) { return; }
             // console.log(obj)
             switch (obj.post_type as "message" | "notice" | "request") {
                 case "message": {
@@ -997,7 +1013,7 @@ export class OneBotDocking {
         });
     }
     _SendRequest(type: string, params: { [key: string]: any }, func: (obj: { "status": status, "retcode": retcode, "data": null | any }) => void) {
-        if (this.isClosing) { return; }
+        if (this._isClosing) { return; }
         let id = Math.random().toString(16).slice(2);
         this._RequestCallbacks[id] = func;
         let content = {
