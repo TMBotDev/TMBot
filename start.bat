@@ -1,12 +1,16 @@
 @echo off
+chcp 65001
 
 if exist node_modules (
-    echo ÒÀÀµ´æÔÚ!¿ªÊ¼ÔËĞĞ!
+    echo ä¾èµ–å­˜åœ¨!å¼€å§‹è¿è¡Œ!
     node app.js
-    pause
-    exit
+    goto end
 ) else (
-    echo ÒÀÀµ²»´æÔÚ!°´ÏÂÈÎÒâ¼ü¿ªÊ¼°²×°!(ÇëÈ·ÈÏnode»·¾³)
+    echo ä¾èµ–ä¸å­˜åœ¨!æŒ‰ä¸‹ä»»æ„é”®å¼€å§‹å®‰è£…! Â·è¯·ç¡®è®¤nodeç¯å¢ƒ
     pause
-    npm i
+    cmd /k npm i
+    goto end
 )
+:end
+echo æŒ‰ä¸‹ä»»æ„é”®å…³é—­é¡µé¢
+pause

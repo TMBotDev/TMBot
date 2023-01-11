@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { Version } from "../app";
 import { Logger } from "./logger";
 
 
@@ -98,7 +99,9 @@ export class FileClass {
     static readFrom(path1: string) {
         let ph = getStandardPath(path1);
         if (ph == null) { throw new Error(`FileClass::ReadFrom: 无法获取标准路径<${path1}>`); }
-        new Logger("FileClass").info("Debug: " + ph);
+        if (Version.isDebug) {
+            new Logger("FileClass").info("Debug: " + ph);
+        }
         mkdirSync(path.dirname(ph));
         let res: string | null = null;
         try { res = fs.readFileSync(ph, { "flag": "r" }).toString(); } catch (_) { }
