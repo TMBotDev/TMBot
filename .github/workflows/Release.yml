@@ -22,7 +22,7 @@ jobs:
          tsc --outDir ./build/ -watch false
       - name: Copy Files
         run: |
-          cp start.bat ./build/
+          cp TMBotStart.exe ./build/
           cp start.sh ./build/
           cp package.json ./build/
       - name: Pack Release
