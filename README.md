@@ -10,7 +10,6 @@ OneBot标准的TMBot插件加载框架（WebsocketClient） 推荐使用go-cqhtt
 [![Issues][issues-shield]][issues-url]
 [![MIT License][license-shield]][license-url]
 
-
 <!-- PROJECT LOGO -->
 <br/>
 
@@ -35,8 +34,6 @@ OneBot标准的TMBot插件加载框架（WebsocketClient） 推荐使用go-cqhtt
 
 </p>
 
-
- 
 ## 目录
 
 - [上手指南](#上手指南)
@@ -56,7 +53,7 @@ OneBot标准的TMBot插件加载框架（WebsocketClient） 推荐使用go-cqhtt
 ### 上手指南
 
 1. 前往Releases页面下载最新的TMBot正式版
-2. 安装go-cqhttp或其他OneBot标准的机器人后端,设置为正向ws连接(go-cqhttp链接：https://github.com/Mrs4s/go-cqhttp)
+2. 安装go-cqhttp或其他OneBot标准的机器人后端,设置为正向ws连接(go-cqhttp链接：<https://github.com/Mrs4s/go-cqhttp>)
 2. 启动start.bat(Linux使用start.sh)安装所需依赖
 3. 启动框架，在/config/文件夹找到config.json,写入配置
 4. 修改配置文件后，启动机器人
@@ -81,8 +78,8 @@ OneBot标准的TMBot插件加载框架（WebsocketClient） 推荐使用go-cqhtt
 
 1. 安装node.js(Linux上还要安装npm)
 2. 使用start脚本安装框架所需依赖
-3. 您还需要go-cqhttp或其他OntBot协议的机器人作为后端(go-cqhttp链接：https://github.com/Mrs4s/go-cqhttp)
-4. 前往下载插件模板：https://github.com/TMBotDev/TMBot-Plugin-Demo.git
+3. 您还需要go-cqhttp或其他OntBot协议的机器人作为后端(go-cqhttp链接：<https://github.com/Mrs4s/go-cqhttp>)
+4. 前往下载插件模板：<https://github.com/TMBotDev/TMBot-Plugin-Demo.git>
 5. 将插件安装进TMBot中
 6. 开始你的开发之旅
 
@@ -104,7 +101,6 @@ git clone https://github.com/TMBotDev/TMBot/.git
 
 ### 文件目录说明
 
-
 ```
 FileTree:  
 ├── /config/     // TMBot总配置目录(不要往这里操作任何东西!)
@@ -117,7 +113,6 @@ FileTree:
 └── /tools/      //TMBot用到的小工具
 
 ```
-
 
 ### 部署
 
@@ -134,7 +129,6 @@ FileTree:
 #### 如何参与开源项目
 
 贡献使开源社区成为一个学习、激励和创造的绝佳场所。你所作的任何贡献都是**非常感谢**的。
-
 
 1. Fork 这个项目
 2. 创建你的"Feature Branch",例如 (`git checkout -b feature/AmazingFeature`)
@@ -153,12 +147,12 @@ FileTree:
 **所以可以使用 ```[FileClass.getStandardPath(<相对目录>)]``` 来获取作用于项目路径的绝对路径来避免此类BUG出现**
 
 *```TIPS: TMBot的基础接口实现已经全部使用了上述方法，所以可以直接传入作用于项目的相对路径```*
-
+***
 ### 您还需要注意的是
-
 
 1. TMBot已经为你写好了一些基础接口实现，
 例如:
+
 ```tools/data: JsonConfigFileClass,IniConfigFileClass,
 tools/file: FileClass.readFrom,
             FileClass.writeLine,
@@ -182,20 +176,25 @@ tools/logger: Logger
 7. TMBot框架的插件是以Node包形式存在， 所以你可以在你的项目里随意引用所有模块
 (请不要随意"使用"内部功能实现的模块) 如：```OneBotDocking```， ```PluginLoader```，```Websocket```。
 虽然不可以使用，但是可以引用它内部的方法作为参数类型
-
-
-
+8. 请在你正在使用的WS实例销毁时一并结束你的插件的一切工作,例子:
+```
+let tmp = BotDockingMgr.getBot("xxx");
+let sid = setInterval(()=>{},1000);
+tmp.Client.events.onDestroy.on(()=>{
+    clearInterval(sid);
+})
+```
+***
 
 ### 版本控制
 
-该项目使用Git进行版本管理。您可以在repository参看当前可用版本。
-
+该项目使用Git进行版本管理。您可以在repository参看当前可用版本。 
 
 ### 作者
 
 Timiya
 
-MineBBS:提米吖  &ensp; qq:284696890    
+MineBBS:提米吖  &ensp; qq:284696890
 
  *您也可以在贡献者名单(暂时没有)中参看所有参与该项目的开发者。*
 
@@ -214,7 +213,6 @@ MineBBS:提米吖  &ensp; qq:284696890
 - [xxxxxxxxxxxxxx](https://connoratherton.com/loaders)
 
 <!-- links -->
-[your-project-path]:TMBotDev/TMBot/
 [contributors-shield]: https://img.shields.io/github/contributors/TMBotDev/TMBot.svg?style=flat-square
 [contributors-url]: https://github.com/TMBotDev/TMBot/graphs/contributors
 [forks-shield]: https://img.shields.io/github/forks/TMBotDev/TMBot.svg?style=flat-square
