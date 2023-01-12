@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 1
-          #submodules: 'true'
+          # submodules: 'true'
       - name: Install Requirements    
         run: |
           npm i
@@ -25,12 +25,19 @@ jobs:
       - name: Build TMBot    
         run: |
          mkdir build
-         tsc --outDir ./build/ -watch false
+         tsc --outDir ./TMBot/ -watch false
       - name: Copy Files
         run: |
-          cp start.bat ./build/
-          cp start.sh ./build/
-          cp package.json ./build/
+          cp TMBotStart ./TMBot/
+          cp package.json ./TMBot/
+      - name: Build Linux Startup Files
+        run: |
+         mkdir build
+         cd build
+         cmake ..
+         make -j 4
+      - name: Copy Linux Startup Files
+        run: cp ./build/TMBotStart ./TMBot/
       - name: Upload TMBot
         uses: actions/upload-artifact@v3.1.0
         with:
