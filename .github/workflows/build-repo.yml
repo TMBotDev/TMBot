@@ -1,14 +1,12 @@
-name: 'build-repo'
+name: "build-repo"
 on: # rebuild any PRs and main branch changes
   pull_request:
     branches:
       - main
-      - beta
   workflow_dispatch:
   push:
     branches:
       - main
-      - beta
 
 jobs:
   build: # make sure build/ci work properly
@@ -18,28 +16,28 @@ jobs:
         with:
           fetch-depth: 1
           # submodules: 'true'
-      - name: Install Requirements    
+      - name: Install Requirements
         run: |
           npm i
           npm install typescript
-      - name: Build TMBot    
+      - name: Build TMBot
         run: |
-         mkdir build
-         tsc --outDir ./TMBot/ -watch false
+          mkdir build
+          tsc --outDir ./TMBot/ -watch false
       - name: Copy Files
         run: |
-          cp TMBotStart ./TMBot/
+          cp TMBotStart.exe ./TMBot/
           cp package.json ./TMBot/
       - name: Build Linux Startup Files
         run: |
-         mkdir build
-         cd build
-         cmake ..
-         make -j 4
+          mkdir build
+          cd build
+          cmake ../TMBotStart/
+          make -j 4
       - name: Copy Linux Startup Files
         run: cp ./build/TMBotStart ./TMBot/
       - name: Upload TMBot
         uses: actions/upload-artifact@v3.1.0
         with:
           name: TMBot
-          path: ./build/
+          path: ./TMBot/
