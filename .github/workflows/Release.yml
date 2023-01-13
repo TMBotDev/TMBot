@@ -1,4 +1,4 @@
-name: 'Release'
+name: "Release"
 on: # rebuild any PRs and main branch changes
   workflow_dispatch:
   push:
@@ -12,36 +12,41 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 1
-      - name: Install Requirements    
+      - name: Install Requirements
         run: |
           npm i
           npm install typescript
-      - name: Build TMBot    
+      - name: Build TMBot
         run: |
-         mkdir build
-         tsc --outDir ./build/ -watch false
+          mkdir TMBot
+          tsc --outDir ./TMBot/ -watch false
       - name: Copy Files
         run: |
-          cp start.bat ./build/
-          cp start.sh ./build/
-          cp package.json ./build/
+          cp TMBotStart.exe ./TMBot/
+          cp package.json ./TMBot/
+      - name: Build Linux Startup Files
+        run: |
+          mkdir build
+          cd build
+          cmake ../TMBotStart/
+          make -j 4
       - name: Pack Release
         id: pack
         working-directory: ${{ env.GITHUB_WORKSPACE }}
         run: |
-          cd build
+          cd TMBot
           7z a TMBot-Release.zip -r
       - name: Get version
         id: version
         uses: notiz-dev/github-action-json-property@release
-        with: 
-           path: 'package.json'
-           prop_path: "version"
+        with:
+          path: "package.json"
+          prop_path: "version"
       - name: Upload TMBot
         uses: actions/upload-artifact@v3.1.0
         with:
           name: TMBot
-          path: ./build/
+          path: ./TMBot/
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
@@ -49,12 +54,6 @@ jobs:
           tag_name: v${{steps.version.outputs.prop}}
           token: ${{ secrets.RELEASE_TOKEN }}
           files: |
-            ./build/TMBot-Release.zip
+            ./TMBot/TMBot-Release.zip
         env:
           GITHUB_REPOSITORY: TMBotDev/TMBot
-
-            
-
-
-
-
