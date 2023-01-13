@@ -22,7 +22,7 @@ jobs:
           npm install typescript
       - name: Build TMBot
         run: |
-          mkdir build
+          mkdir TMBot
           tsc --outDir ./TMBot/ -watch false
       - name: Copy Files
         run: |
