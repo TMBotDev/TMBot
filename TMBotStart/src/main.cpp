@@ -6,7 +6,7 @@ int main()
 {
     if (access("node_modules", F_OK) != 0)
     {
-        string choice;
+        string choice = "y";
         cout << "Requirement Not Found!" << endl;
         cout << "Make sure you`re installed node.js and npm!" << endl;
         cout << "Do you want to install requirement?(Y/n)" << endl;
