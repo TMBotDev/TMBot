@@ -102,11 +102,14 @@ sudo apt-get install nodejs npm #  Linux Debian系可以这样安装
 # Linux 用户在此处打开终端，输入：
 chmod +x ./TMBotStart && ./TMBotStart
 ```
+
 3. 启动TMBot
+
 ```sh
 ./TMBotStart # Linux
 TMBotStart.exe # Windows
 ```
+
 ### 文件目录说明
 
 ```json
@@ -155,13 +158,14 @@ FileTree:
 **而在`LiteLoaderBDS`上，根目录是作用于`BDS根目录`上的**
 
 **所以可以使用**
+
 ```js
 FileClass.getStandardPath(<相对目录>)
 ```
+
 **来获取作用于项目路径的绝对路径来避免此类BUG出现**
 
 *```TIPS: TMBot的基础接口实现已经全部使用了上述方法，所以可以直接传入作用于项目的相对路径```*
-
 
 #### 一些额外注意事项
 
@@ -193,6 +197,7 @@ tools/logger: Logger
 (请不要随意"使用"内部功能实现的模块) 如：```OneBotDocking```， ```PluginLoader```，```Websocket```。
 虽然不可以使用，但是可以引用它内部的方法作为参数类型
 8. 请在你正在使用的WS实例销毁时一并结束你的插件的一切工作,例子:
+
 ```js
 let tmp = BotDockingMgr.getBot("xxx");
 let sid = setInterval(()=>{},1000);
@@ -201,10 +206,9 @@ tmp.Client.events.onDestroy.on(()=>{
 })
 ```
 
-
 ### 版本控制
 
-该项目使用Git进行版本管理。您可以在GitHub查看当前可用版本。 
+该项目使用Git进行版本管理。您可以在GitHub查看当前可用版本。
 
 ### 作者
 
