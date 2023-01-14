@@ -36,32 +36,35 @@ OneBot标准的TMBot插件加载框架（WebsocketClient） 推荐使用go-cqhtt
 
 ## 目录
 
-- [上手指南](#上手指南)
-  - [开发前的配置要求](#开发前的配置要求)
-  - [安装步骤](#安装步骤)
-  - [配置文件示例](#配置文件示例)
+- [快速上手指南](#快速上手指南)
+  - [配置文件注释](#配置文件注释)
+  - [插件开发指南](#插件开发指南)
+  - [用户安装指南](#用户安装指南)
 - [文件目录说明](#文件目录说明)
-- [部署](#部署)
 - [使用到的框架](#使用到的框架)
 - [贡献者](#贡献者)
-  - [如何参与开源项目](#如何参与开源项目)
-  - [开发注意事项](#开发注意事项)
+  - [如何参与此项目](#如何参与此项目)
+- [开发注意事项](#开发注意事项)
+  - [一些额外注意事项](#一些额外注意事项)
 - [版本控制](#版本控制)
 - [作者](#作者)
+- [版权说明](版权说明)
 - [鸣谢](#鸣谢)
 
-### 上手指南
+### 快速上手指南
 
 1. 前往Releases页面下载最新的TMBot正式版
 2. 安装go-cqhttp或其他OneBot标准的机器人后端,设置为正向ws连接(go-cqhttp链接：<https://github.com/Mrs4s/go-cqhttp>)
-2. 启动start.bat(Linux使用start.sh)安装所需依赖
-3. 启动框架，在/config/文件夹找到config.json,写入配置
-4. 修改配置文件后，启动机器人
-5. Enjoy it ;)
+3. 启动TMBotStart.exe(Linux使用./TMBotStart)安装所需依赖
+4. 重复3. ，在./config/文件夹找到config.json,更改ws地址，端口和你想改的东西
+5. 修改配置文件后，启动机器人
+6. Enjoy it ;)
 
-#### 配置文件示例
+***更多内容请参阅[插件开发指南](#插件开发指南)和[用户安装指南](#用户安装指南)***
 
-```
+#### 配置文件注释
+
+```json
 {
     "RoBot": {  //机器人名字
         "Websocket": "ws://127.0.0.1:22",      //你的ws地址和端口
@@ -72,51 +75,59 @@ OneBot标准的TMBot插件加载框架（WebsocketClient） 推荐使用go-cqhtt
         "LogFile": "RoBotLog-{Y}-{M}-{D}.log"  //日志文件名格式，Y为年，M为月，D为日
     }
 }
+
 ```
 
-#### 开发前的配置要求
+#### 插件开发指南
 
 1. 安装node.js(Linux上还要安装npm)
-2. 使用start脚本安装框架所需依赖
-3. 您还需要go-cqhttp或其他OntBot协议的机器人作为后端(go-cqhttp链接：<https://github.com/Mrs4s/go-cqhttp>)
-4. 前往下载插件模板：<https://github.com/TMBotDev/TMBot-Plugin-Demo.git>
-5. 将插件安装进TMBot中
-6. 开始你的开发之旅
+2. 克隆仓库或前往Releases下载TMBot框架
+3. 运行一次TMBotStart，安装所需依赖
+4. 下载go-cqhttp或其他OntBot协议的机器人作为后端(go-cqhttp链接：<https://github.com/Mrs4s/go-cqhttp>)
+5. 下载插件模板：<https://github.com/TMBotDev/TMBot-Plugin-Demo.git>
+6. 将插件安装进TMBot中
+7. 运行TMBotStart，开始你的开发之旅
 
-#### **安装步骤**
+#### **用户安装指南**
 
-1. 克隆这个仓库
+1. 前往Releases 下载稳定版（推荐）或从Actions下载测试版（不推荐）
 
-```sh
-git clone https://github.com/TMBotDev/TMBot/.git
-```
-
-2. 启动框架
+2. 安装必要的框架和依赖
 
 ```sh
-./start.sh  //Windows为start.bat
+sudo apt-get install nodejs npm #  Linux Debian系可以这样安装
+# Windows用户请自行前往Node.JS官网安装
+# 下载后解压到一个文件夹
+# Windows 用户双击TMBotStart.exe即可安装依赖
+# Linux 用户在此处打开终端，输入：
+chmod +x ./TMBotStart && ./TMBotStart
 ```
-
-更详细的步骤请见[上手指南](#上手指南)
-
+3. 启动TMBot
+```sh
+./TMBotStart # Linux
+TMBotStart.exe # Windows
+```
 ### 文件目录说明
 
-```
+```json
 FileTree:  
-├── /config/     // TMBot总配置目录(不要往这里操作任何东西!)
-├── LICENSE.txt  // 这个项目的许可证
-├── README.md    // 您正在阅读的这个文件
+├── /config/     // TMBot总配置目录(您只应该去更改里面的config.json)
+├── node_modules // TMBot所需的依赖
 ├── modules      // TMBot框架模块
+└── /tools/      // TMBot用到的小工具
 ├── /plugins/    // TMBot插件加载目录(在这里创建插件)
-│  ├── /Data/    // TMBot插件数据目录 
-│  ├── xxx       // 插件数据(最好每个创建都独立在Data目录创建一个文件夹，不要随意乱放)
-└── /tools/      //TMBot用到的小工具
+    ├── /Data/   // TMBot插件数据目录 
+    ├── xxx      // 插件数据(最好每个创建都独立在Data目录创建一个文件夹，不要随意乱放)
+├── app.js       // TMBot的入口文件，正常情况下不应该修改
+├── CONTRIBUTING.md // TMBot的贡献者名单（Clone Only）
+├── LICENSE.txt  // 这个项目的许可证 （Clone Only）
+├── logo.png     // RT.
+├── package.json // （Clone Only）
+├── README.md    // 您正在阅读的这个文件（Clone Only）
+├── TMBotStart.exe // Windows 启动文件
+├── TMBotStart   // Linux 启动文件
 
 ```
-
-### 部署
-
-  见[上手指南](#上手指南)
 
 ### 使用到的框架
 
@@ -124,36 +135,41 @@ FileTree:
 
 ### 贡献者
 
-请阅读**CONTRIBUTING.md** (现在没有) 查阅为该项目做出贡献的开发者。
+请阅读**CONTRIBUTING.md** 查阅为该项目做出贡献的开发者。
 
-#### 如何参与开源项目
+#### 如何参与此项目
 
-贡献使开源社区成为一个学习、激励和创造的绝佳场所。你所作的任何贡献都是**非常感谢**的。
+贡献使开源社区成为一个学习、激励和创造的绝佳场所。你所作的任何贡献都是**让我们非常感谢**的。
 
 1. Fork 这个项目
-2. 创建你的"Feature Branch",例如 (`git checkout -b feature/AmazingFeature`)
-3. Commit你的更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 将更改推到你的分支上 (`git push origin feature/AmazingFeature`)
+2. 创建你的"Feature Branch",例如 (```git checkout -b feature/AmazingFeature```)
+3. Commit你的更改 (```git commit -m 'Add some Amazing Feature'```)
+4. 将更改推到你的分支上 (```git push origin feature/AmazingFeature```)
 5. 开始PR
 
-#### 开发注意事项
+### 开发注意事项
 
 此框架可以运行于LiteLoaderBDS与NodeJS上
+**但是请要注意，如果在`NodeJS环境上运行`，那么根目录是直接作用于`项目目录的`**
 
-**但是请要注意，在```NodeJS环境上运行```，根目录是直接作用于```项目目录的```**
+**而在`LiteLoaderBDS`上，根目录是作用于`BDS根目录`上的**
 
-**而在```LiteLoaderBDS```上，根目录是作用于```BDS根目录```上的！**
-
-**所以可以使用 ```[FileClass.getStandardPath(<相对目录>)]``` 来获取作用于项目路径的绝对路径来避免此类BUG出现**
+**所以可以使用**
+```js
+FileClass.getStandardPath(<相对目录>)
+```
+**来获取作用于项目路径的绝对路径来避免此类BUG出现**
 
 *```TIPS: TMBot的基础接口实现已经全部使用了上述方法，所以可以直接传入作用于项目的相对路径```*
-***
-### 您还需要注意的是
+
+
+#### 一些额外注意事项
 
 1. TMBot已经为你写好了一些基础接口实现，
 例如:
 
-```tools/data: JsonConfigFileClass,IniConfigFileClass,
+```js
+tools/data: JsonConfigFileClass,IniConfigFileClass,
 tools/file: FileClass.readFrom,
             FileClass.writeLine,
             FileClass.createDir,
@@ -177,18 +193,18 @@ tools/logger: Logger
 (请不要随意"使用"内部功能实现的模块) 如：```OneBotDocking```， ```PluginLoader```，```Websocket```。
 虽然不可以使用，但是可以引用它内部的方法作为参数类型
 8. 请在你正在使用的WS实例销毁时一并结束你的插件的一切工作,例子:
-```
+```js
 let tmp = BotDockingMgr.getBot("xxx");
 let sid = setInterval(()=>{},1000);
 tmp.Client.events.onDestroy.on(()=>{
     clearInterval(sid);
 })
 ```
-***
+
 
 ### 版本控制
 
-该项目使用Git进行版本管理。您可以在repository参看当前可用版本。 
+该项目使用Git进行版本管理。您可以在GitHub查看当前可用版本。 
 
 ### 作者
 
@@ -196,21 +212,13 @@ Timiya
 
 MineBBS:提米吖  &ensp; qq:284696890
 
- *您也可以在贡献者名单(暂时没有)中参看所有参与该项目的开发者。*
+ *您也可以在贡献者名单中参看所有参与该项目的开发者。*
 
 ### 版权说明
 
 该项目使用 GPL-V3 授权许可，详情请参阅 [LICENSE](https://github.com/TMBotDev/TMBot/blob/master/LICENSE)
 
 ### 鸣谢
-
-<!-- 暂时没用>
-- [GitHub Emoji Cheat Sheet](https://www.webpagefx.com/tools/emoji-cheat-sheet)
-- [Img Shields](https://shields.io)
-- [Choose an Open Source License](https://choosealicense.com)
-- [GitHub Pages](https://pages.github.com)
-- [Animate.css](https://daneden.github.io/animate.css)
-- [xxxxxxxxxxxxxx](https://connoratherton.com/loaders)
 
 <!-- links -->
 [contributors-shield]: https://img.shields.io/github/contributors/TMBotDev/TMBot.svg?style=flat-square
