@@ -112,7 +112,7 @@ TMBotStart.exe # Windows
 
 ### 文件目录说明
 
-```json
+```
 FileTree:  
 ├── /config/     // TMBot总配置目录(您只应该去更改里面的config.json)
 ├── node_modules // TMBot所需的依赖
@@ -172,7 +172,7 @@ FileClass.getStandardPath(<相对目录>)
 1. TMBot已经为你写好了一些基础接口实现，
 例如:
 
-```js
+```
 tools/data: JsonConfigFileClass,IniConfigFileClass,
 tools/file: FileClass.readFrom,
             FileClass.writeLine,
