@@ -859,7 +859,8 @@ export class OneBotDocking {
     private _events = {
         "onRawMessage": new Event<(rawInfo: string, ori: (isExecute: boolean, raw: string) => void) => void>(this.DelayLogger),
         "onInitSuccess": new Event<() => void>(this.DelayLogger),
-        "onClientClose": new Event<() => void>(this.DelayLogger),
+        "onClientDisconnect": new Event<() => void>(this.DelayLogger),
+        "onClientDestroy": new Event<() => void>(this.DelayLogger),
         "onClientStatusChanged": new Event<(device: DeviceInfo, online: boolean) => void>(this.DelayLogger),
         "onPrivateMsg": new Event<(senderInfo: SenderInfo, sub_type: "friend" | "group" | "discuss" | "other", msgInfo: MsgInfo) => void>(this.DelayLogger),
         "onGroupMsg": new Event<(groupInfo: GroupInfo, sub_type: "normal" | "anonymous" | "notice", groupMemberInfo: GroupMemberInfo | AnonymousInfo, msgInfo: MsgInfo) => void>(this.DelayLogger),
@@ -1004,7 +1005,12 @@ export class OneBotDocking {
         });
         this.wsc.events.onClose.on((code, desc) => {
             // this.logger.warn(`WS已断开!退出码: ${code}, DESC:${desc}`);
-            this._events.onClientClose.fire(
+            // this._events.onClientClose.fire(
+            //     "OneBotDockingProcess_Event_ClientClose"
+            // );
+        });
+        this.wsc.events.onDestroy.on(() => {
+            this._events.onClientDestroy.fire(
                 "OneBotDockingProcess_Event_ClientClose"
             );
         });
