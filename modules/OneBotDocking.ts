@@ -510,6 +510,7 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
             // this.MsgIDMap.set(msg.msg_id, msg);
             this.events.onPrivateMsg.fire(
                 "OneBotDockingProcess_Event_PrivateMsg",
+                obj.time * 1000,
                 sender,
                 obj.sub_type,
                 msg
@@ -534,6 +535,7 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
             }
             this.events.onGroupMsg.fire(
                 "OneBotDockingProcess_Event_GroupMsg",
+                obj.time * 1000,
                 group,
                 obj.sub_type,
                 member,
@@ -558,6 +560,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             let file = new FileInfo(obj.file);
             this.events.onGroupUploadFile.fire(
                 "OneBotDockingProcess_Event_GroupUploadFile",
+                obj.time * 1000,
                 group,
                 member,
                 file
@@ -569,6 +572,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             let member = group.getMember(obj.user_id)!;
             this.events.onGroupAdminChange.fire(
                 "OneBotDockingProcess_Event_GroupAdminChange",
+                obj.time * 1000,
                 group,
                 member,
                 obj.sub_type
@@ -584,6 +588,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             let op = await this.getStrangerInfoEx(obj.operator_id);
             this.events.onGroupLeave.fire(
                 "OneBotDockingProcess_Event_GroupLeave",
+                obj.time * 1000,
                 group,
                 obj.sub_type,
                 member,
@@ -626,6 +631,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             }
             this.events.onGroupJoin.fire(
                 "OneBotDockingProcess_Event_GroupJoin",
+                obj.time * 1000,
                 baseGroupInfo,
                 (obj.sub_type == "invite"),
                 strangeInfo as StrangerInfo,
@@ -639,6 +645,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             if (obj.user_id == 0) {
                 this.events.onGroupWholeMute.fire(
                     "OneBotDockingProcess_Event_GroupWholeMute",
+                    obj.time * 1000,
                     group,
                     (obj.sub_type == "lift_ban"),
                     op
@@ -647,6 +654,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
                 let member = (await group.refreshMemberInfo(this, obj.user_id))!;
                 this.events.onGroupMute.fire(
                     "OneBotDockingProcess_Event_GroupMute",
+                    obj.time * 1000,
                     group,
                     (obj.sub_type == "lift_ban"),
                     member,
@@ -666,6 +674,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             }
             this.events.onGroupRecall.fire(
                 "OneBotDockingProcess_Event_GroupRecall",
+                obj.time * 1000,
                 group,
                 member,
                 op,
@@ -678,6 +687,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             await this.RefreshAllFriendInfo();
             this.events.onFriendAdd.fire(
                 "OneBotDockingProcess_Event_FriendAdd",
+                obj.time * 1000,
                 strangerInfo
             );
             break;
@@ -690,6 +700,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             if (!msg) { return; }
             this.events.onFriendRecall.fire(
                 "OneBotDockingProcess_Event_FriendRecall",
+                obj.time * 1000,
                 friendInfo,
                 msg
             );
@@ -705,6 +716,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
                         let target = (await group.refreshMemberInfo(this, obj.target_id))!;
                         this.events.onGroupPoke.fire(
                             "OneBotDockingProcess_Event_GroupPoke",
+                            obj.time * 1000,
                             group,
                             sender,
                             target
@@ -714,6 +726,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
                         let sender = this.getFriendInfoSync(obj.user_id)!;
                         this.events.onFriendPoke.fire(
                             "OneBotDockingProcess_Event_FriendPoke",
+                            obj.time * 1000,
                             sender
                         );
                     }
@@ -724,6 +737,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
                     let target = (await group!.refreshMemberInfo(this, obj.target_id))!;
                     this.events.onGroupRedPacketLuckKing.fire(
                         "OneBotDockingProcess_Event_GroupRedPacketLuckKing",
+                        obj.time * 1000,
                         group!,
                         member,
                         target
@@ -734,6 +748,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
                     let member = (await group!.refreshMemberInfo(this, obj.user_id))!;
                     this.events.onGroupHonorChanged.fire(
                         "OneBotDockingProcess_Event_GroupHonorChanged",
+                        obj.time * 1000,
                         group!,
                         obj.honor_type,
                         member
@@ -748,6 +763,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             let member = group.getMember(obj.user_id)!;
             this.events.onGroupCardChanged.fire(
                 "OneBotDockingProcess_Event_GroupCardChanged",
+                obj.time * 1000,
                 group,
                 member,
                 obj.card_new
@@ -760,6 +776,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             let file = new OfflineFileInfo(obj.file);
             this.events.onReceiveOfflineFile.fire(
                 "OneBotDockingProcess_Event_ReceiveOfflineFile",
+                obj.time * 1000,
                 stranger,
                 file
             );
@@ -769,6 +786,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             let device = new DeviceInfo(obj.client);
             this.events.onClientStatusChanged.fire(
                 "OneBotDockingProcess_Event_ClientStatusChanged",
+                obj.time * 1000,
                 device,
                 obj.online
             );
@@ -784,6 +802,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             let op = (await group.refreshMemberInfo(this, obj.operator_id))!;
             this.events.onGroupEssenceMsgChanged.fire(
                 "OneBotDockingProcess_Event_GroupEssenceMsgChanged",
+                obj.time * 1000,
                 group,
                 obj.sub_type,
                 sender,
@@ -802,6 +821,7 @@ async function ProcessOneBotRequest(this: OneBotDocking, obj: obj) {
             let strangerInfo = (await this.getStrangerInfoEx(obj.user_id))!;
             this.events.onFriendRequestAdd.fire(
                 "OneBotDockingProcess_Event_FriendRequestAdd",
+                obj.time * 1000,
                 strangerInfo,
                 obj.comment,
                 obj.flag
@@ -813,11 +833,34 @@ async function ProcessOneBotRequest(this: OneBotDocking, obj: obj) {
             let strangerInfo = (await this.getStrangerInfoEx(obj.user_id))!;
             this.events.onGroupRequestJoin.fire(
                 "OneBotDockingProcess_Event_GroupRequestJoin",
+                obj.time * 1000,
                 groupBaseInfo,
                 (obj.sub_type == "invite"),
                 strangerInfo,
                 obj.comment,
                 obj.flag
+            );
+            break;
+        }
+    }
+}
+
+async function ProcessOneBotMetaEvent(this: OneBotDocking, obj: obj) {
+    // console.log(obj);
+    switch (obj.meta_event_type as "lifecycle" | "heartbeat") {
+        case "lifecycle": {
+            this.events.onLifecycle.fire(
+                "OneBotDockingProcess_Event_Lifecycle",
+                obj.time * 1000,
+                obj.sub_type
+            );
+            break;
+        }
+        case "heartbeat": {
+            this.events.onHeartBeat.fire(
+                "OneBotDockingProcess_Event_HeartBeat",
+                obj.time * 1000,
+                obj.interval
             );
             break;
         }
@@ -858,6 +901,10 @@ export class OneBotDocking {
 
     private _events = {
         "onRawMessage": new Event<(rawInfo: string, ori: (isExecute: boolean, raw: string) => void) => void>(this.DelayLogger),
+        /**
+         * 初始化数据成功
+         * @note 此监听可能会重复触发,因为重新连接也会初始化一次数据
+         */
         "onInitSuccess": new Event<() => void>(this.DelayLogger),
         "onClientDisconnect": new Event<() => void>(this.DelayLogger),
         "onClientDestroy": new Event<() => void>(this.DelayLogger),
@@ -885,7 +932,17 @@ export class OneBotDocking {
         "onGroupHonorChanged": new Event<(group: GroupInfo, honor: HonorType, member: GroupMemberInfo) => void>(this.DelayLogger),
         "onGroupCardChanged": new Event<(group: GroupInfo, member: GroupMemberInfo, card: string) => void>(this.DelayLogger),
         "onReceiveOfflineFile": new Event<(stranger: StrangerInfo, offlineFile: OfflineFileInfo) => void>(this.DelayLogger),
-        "onGroupEssenceMsgChanged": new Event<(group: GroupInfo, sub_type: "add" | "delete", sender: GroupMemberInfo, operator: GroupMemberInfo, msg: MsgInfo) => void>(this.DelayLogger)
+        "onGroupEssenceMsgChanged": new Event<(group: GroupInfo, sub_type: "add" | "delete", sender: GroupMemberInfo, operator: GroupMemberInfo, msg: MsgInfo) => void>(this.DelayLogger),
+        /**
+         * 心跳包触发
+         * @note interval是心跳包触发时间
+         */
+        "onHeartBeat": new Event<(interval: number) => void>(this.DelayLogger),
+        /**
+         * 生命周期
+         * @note 首次建立连接插件会错过connect生命周期,建议使用onInitSuccess代替connect生命周期
+        */
+        "onLifecycle": new Event<(type: "enable" | "disable" | "connect") => void>(this.DelayLogger)
     }
 
     public logger: Logger;
@@ -951,7 +1008,7 @@ export class OneBotDocking {
             if ((await this._loadLoginInfo()) &&
                 (await this._loadFriends()) &&
                 (await this._loadGroupsInfo())) {
-                this._events.onInitSuccess.fire("OneBotDockingProcess_Event_InitSuccess");
+                this._events.onInitSuccess.fire("OneBotDockingProcess_Event_InitSuccess", null);
                 this.logger.info(`基础信息初始化成功!`);
                 this._IsInitd = true;
             } else {
@@ -962,7 +1019,7 @@ export class OneBotDocking {
             if (isBuff) { this.logger.warn("暂不支持Buffer信息!"); return; }
             let msg_ = msg as string, b = true;
             this.events.onRawMessage.fire(
-                "OneBotDockingProcess_Event_RawMessage",
+                "OneBotDockingProcess_Event_RawMessage", null,
                 msg_,
                 (boo, msg) => {
                     b = (b ? boo : b);
@@ -988,7 +1045,7 @@ export class OneBotDocking {
             }
             if (this._isClosing) { return; }
             // console.log(obj)
-            switch (obj.post_type as "message" | "notice" | "request") {
+            switch (obj.post_type as "message" | "notice" | "request" | "meta_event") {
                 case "message": {
                     ProcessOneBotMessage.call(this, obj);
                     break;
@@ -1001,6 +1058,10 @@ export class OneBotDocking {
                     ProcessOneBotRequest.call(this, obj);
                     break;
                 }
+                case "meta_event": {
+                    ProcessOneBotMetaEvent.call(this, obj);
+                    break;
+                }
             }
         });
         this.wsc.events.onClose.on((code, desc) => {
@@ -1011,7 +1072,7 @@ export class OneBotDocking {
         });
         this.wsc.events.onDestroy.on(() => {
             this._events.onClientDestroy.fire(
-                "OneBotDockingProcess_Event_ClientClose"
+                "OneBotDockingProcess_Event_ClientClose", null
             );
         });
         this.events.onRawMessage.on((raw, ori) => {
