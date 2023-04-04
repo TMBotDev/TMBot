@@ -7,13 +7,29 @@ import { Logger } from "../tools/logger";
 
 let logger = new Logger("WebsocketClient", 4);
 
-export class Event<FUNCTION_T extends (...args: any[]) => void | Promise<void>>{
+export class Event<FUNCTION_T extends (...args: any[]) => any | Promise<any>>{
     private num = 0;
     constructor(
         private log: Logger | { "error": (...args: any[]) => any },
-        private funcList: { [key: string]: FUNCTION_T } = {}
+        private funcList: { [key: string]: (time: number, ...params: Parameters<FUNCTION_T>) => ReturnType<FUNCTION_T> } = {}
     ) { }
     on(func: FUNCTION_T) {
+        let name = (() => {
+            try {
+                if (func.name) { return func.name; }
+                let res = ((func.toString().match(/function\s*([^(]*)\(/))![1]).trim();
+                if (res == "*") { throw new Error("NameError"); }
+                return res;
+            } catch (_) {
+                return `_NOT_FUNCTION_NAME_(${this.num++})`;
+            }
+        })();
+        this.funcList[name] = (_t, ...p) => {
+            return func(...p);
+        };
+        return name;
+    }
+    onEx(func: (time: number, ...params: Parameters<FUNCTION_T>) => ReturnType<FUNCTION_T>) {
         let name = (() => {
             try {
                 if (func.name) { return func.name; }
@@ -38,16 +54,19 @@ export class Event<FUNCTION_T extends (...args: any[]) => void | Promise<void>>{
     size() {
         return Object.keys(this.funcList).length;
     }
-    fire(api: string, ...params: Parameters<FUNCTION_T>) {
+    fire(api: string, time: number | null | undefined, ...params: Parameters<FUNCTION_T>) {
         let keys = Object.keys(this.funcList);
         let l = keys.length, i = 0;
+        if (time == null) {
+            time = Date.now();
+        }
         while (i < l) {
             let funcName = keys[i];
             let func = this.funcList[funcName];
             try {
-                let res = func(...params);
+                let res = func(time, ...params);
                 if (isPromise(res)) {
-                    res.catch((e) => {
+                    (res as Promise<unknown>).catch((e) => {
                         this.log.error(`Error in: ${api}(${funcName})[Promise]`);
                         this.log.error((e instanceof Error) ? e.stack : e.toString());
                     });
@@ -164,21 +183,21 @@ export class WebsocketClient {
     _Init() {
         this._client.onopen = (_e) => {
             logger.info("服务器连接成功!");
-            this._events.onStart.fire("WebsocketProcessStart");
+            this._events.onStart.fire("WebsocketProcessStart", null);
         };
         this._client.onmessage = (e) => {
             let isBuffer = typeof (e.data) != "string";
             if (!isBuffer) {
-                this._events.onMsg.fire("WebsocketProcessUTF8Message", e.data as string, isBuffer);
+                this._events.onMsg.fire("WebsocketProcessUTF8Message", null, e.data as string, isBuffer);
             } else {
-                this._events.onMsg.fire("WebsocketProcessBINARYMessage", e.data as Buffer, isBuffer);
+                this._events.onMsg.fire("WebsocketProcessBINARYMessage", null, e.data as Buffer, isBuffer);
             }
         };
         this._client.onclose = (e) => {
-            this._events.onClose.fire("WebsocketProcessClose", e.code, e.reason);
+            this._events.onClose.fire("WebsocketProcessClose", null, e.code, e.reason);
         };
         this._client.onerror = (e) => {
-            this._events.onError.fire("WebsocketProcessFailed", e.error as Error);
+            this._events.onError.fire("WebsocketProcessFailed", null, e.error as Error);
             //logger.error("ConnectFailed! ", err.stack);
         };
         // this._conn = this._client.();
@@ -233,7 +252,7 @@ export class WebsocketClient {
      * 销毁此对象(销毁不可逆!)
      */
     destroy(code: number = 1000) {
-        this._events.onDestroy.fire("WebsocketDestroy");
+        this._events.onDestroy.fire("WebsocketDestroy", null);
         this.isDestroyed = true;
         this.close(code);
         return true;
