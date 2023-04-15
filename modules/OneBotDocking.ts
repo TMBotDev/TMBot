@@ -342,17 +342,23 @@ export class AnonymousInfo {
     get isValid() { return this.obj == null; }
 }
 
+export type Msg_Info = {
+    "type": string,
+    "data": { [key: string]: string }
+};
+
 export class MsgInfo {
     constructor(private obj: {
-        "message": string,
+        "message": string | Array<Msg_Info>,
         "raw_message": string,
         "message_id": number
     }) { }
     delete(_this: OneBotDocking) {
         return _this.deleteMsg(this.obj.message_id);
     }
+    /** 转义过特殊字符的 */
     get originalContent() {
-        return this.obj.message.replace(/&amp\;/g, "&")
+        return this.obj.raw_message.replace(/&amp\;/g, "&")
             .replace(/&#91\;/g, "[")
             .replace(/&#93\;/g, "]")
             .replace(/&#44\;/g, ",");
@@ -499,6 +505,16 @@ async function SafeGetGroupInfo(this: OneBotDocking, group_id: number) {
     return group;
 }
 
+/**
+ * 截断超出的字符串,阶段部分用"..."表示
+ */
+function TruncateString(text: string, size: number) {
+    if (text.length > size) {
+        text = text.substring(0, size) + "...";
+    }
+    return text;
+}
+
 async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
     let sender = new SenderInfo(obj.sender);
     // console.log(obj.sender);
@@ -508,6 +524,7 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
         case "private": {
             let msg = new MsgInfo({ "message": obj.message, "message_id": obj.message_id, "raw_message": obj.raw_message });
             // this.MsgIDMap.set(msg.msg_id, msg);
+            // console.log(JSON.stringify(obj.raw_message, null, 2));
             this.events.onPrivateMsg.fire(
                 "OneBotDockingProcess_Event_PrivateMsg",
                 obj.time * 1000,
@@ -516,7 +533,7 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
                 msg
             );
 
-            this.conf["MsgLog"] && this.logger.info(`私聊消息: ${sender.nickname} >> ${msg.msg}`);
+            this.conf["MsgLog"] && this.logger.info(`私聊消息: ${sender.nickname} >> ${TruncateString(msg.originalContent, 40)}`);
             break;
         }
         case "group": {
@@ -541,7 +558,7 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
                 member,
                 msg
             );
-            this.conf["MsgLog"] && this.logger.info(`[${group.group_name}(${group.group_id})] ${sender.nickname} >> ${msg.originalContent}`);
+            this.conf["MsgLog"] && this.logger.info(`[${group.group_name}(${group.group_id})] ${sender.nickname} >> ${TruncateString(msg.originalContent, 40)}`);
             break;
         }
         // case "discuss": {
@@ -1219,9 +1236,9 @@ export class OneBotDocking {
     // https://github.com/ishkong/go-cqhttp-docs/tree/main/docs/api
 
     async sendMsg(type: "private" | "group" | 0 | 1, id: number, msg: string) {
-        let Type: "private" | "group" | "discuss";
+        let Type: "private" | "group";
         if (typeof (type) == "number") {
-            Type = ["private", "group", "discuss"][type] as "private" | "group" | "discuss";
+            Type = ["private", "group"][type] as "private" | "group";
         } else {
             Type = type;
         }
@@ -1232,7 +1249,6 @@ export class OneBotDocking {
         switch (Type) {
             case "private": json["user_id"] = id; break;
             case "group": json["group_id"] = id; break;
-            case "discuss": json["discuss_id"] = id; break;
         }
         return await this._SendReqPro("send_msg", json);
     };
@@ -1604,5 +1620,18 @@ export class OneBotDocking {
     async deleteUnidirectionalFriend(user_id: number) {
         return await this._SendReqPro("delete_unidirectional_friend", { user_id });
     }
+    //#endregion
+
+    //#region 频道API
+    // /**
+    //  * 获取频道系统内BOT的资料
+    //  */
+    // async getGuildServiceProfile() {
+    //     return (await this._SendReqPro("get_guild_service_profile", {})) as {
+    //         "status": status, "retcode": number, "data": { "nickname": string, "tiny_id": string, "avatar_url": string }
+    //     };
+    // }
+
+
     //#endregion
 }
