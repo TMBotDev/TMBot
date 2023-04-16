@@ -1,7 +1,8 @@
 import path from "path";
 import { Version } from "../app";
 import { Logger } from "../tools/logger";
-import { Event, WebsocketClient } from "./WebSocket";
+import { WebsocketClient } from "./WebSocket";
+import { Event } from "./Event";
 
 
 // let logger = new Logger("Bot", LoggerLevel.Info);
@@ -113,6 +114,7 @@ export class GroupInfo {
     private _Owner: GroupMemberInfo | undefined;
     private _Admins = new Map<number, GroupMemberInfo>();
     private _Members = new Map<number, GroupMemberInfo>();
+    private _RefreshMap = new Map<number, number>();
     constructor(private obj: {
         "group_id": number,
         "group_name": string
@@ -155,12 +157,18 @@ export class GroupInfo {
         return new GroupBaseInfo(data);
     }
     async refreshMemberInfo(_this: OneBotDocking, user_id: number) {
+        let time = Date.now();
         let mem = this._Members.get(user_id);
+        if ((time - (this._RefreshMap.get(user_id) || time)) < 500) {
+            return mem;
+        }
+
         let val = await _this.getGroupMemberInfoEx(+this.obj.group_id, +user_id, true);
         if (!val) {
             _this.logger.error(`[${this.obj.group_name}(${this.obj.group_id})] 刷新成员 ${mem == null ? user_id : `${mem.card || mem.nickname}(${mem.user_id})`} 信息失败!`);
             return mem;
         }
+        this._RefreshMap.set(user_id, time);
         // console.log(val)
         switch (val.role) {
             case "owner":
@@ -515,6 +523,42 @@ function TruncateString(text: string, size: number) {
     return text;
 }
 
+function CQCodeDataToObj(e: string) {
+    let obj: obj = {};
+    let arr = e.split(",");
+    arr.forEach((v) => {
+        let arr = v.split("=");
+        obj[arr[0]] = arr[1];
+    });
+    return obj;
+}
+
+/**
+ * 自动替换CQ码
+ */
+async function AutoReplaceCQCode(msg: string, _this: OneBotDocking, fn: (name: string, data: obj) => Promise<string>) {
+    let CQCodeIndex = msg.indexOf("[CQ:");
+    while (CQCodeIndex != -1) {
+        let CCLIndex = CQCodeIndex + 4;
+        let name = "", _End = false;
+        while (msg[CCLIndex] != "]" && msg[CCLIndex] != undefined) {
+            if (msg[CCLIndex] == ",") { _End = true; }
+            if (!_End) {
+                name += msg[CCLIndex];
+            }
+            CCLIndex += 1;
+        }
+        CCLIndex += 1;
+        let str = msg.substring(CQCodeIndex, CCLIndex).replace(/[ ]/g, "");
+        let data = str.substring((4 + name.length), (str.length - 1));
+        if (!!data) { data = data.substring(1); }
+        name = name[0].toUpperCase() + name.substring(1);
+        msg = msg.substring(0, CQCodeIndex) + `§d[${await fn(name, CQCodeDataToObj(data))}]§r` + msg.substring(CCLIndex);
+        CQCodeIndex = msg.indexOf("[CQ:");
+    }
+    return msg;
+}
+
 async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
     let sender = new SenderInfo(obj.sender);
     // console.log(obj.sender);
@@ -533,7 +577,7 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
                 msg
             );
 
-            this.conf["MsgLog"] && this.logger.info(`私聊消息: ${sender.nickname} >> ${TruncateString(msg.originalContent, 40)}`);
+            this.conf["MsgLog"] && this.logger.info(`私聊消息: ${sender.nickname} >> ${AutoReplaceCQCode(TruncateString(msg.originalContent, 100), this, async (name, _d) => name)}`);
             break;
         }
         case "group": {
@@ -558,7 +602,16 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
                 member,
                 msg
             );
-            this.conf["MsgLog"] && this.logger.info(`[${group.group_name}(${group.group_id})] ${sender.nickname} >> ${TruncateString(msg.originalContent, 40)}`);
+            this.conf["MsgLog"] &&
+                this.logger.info(`[${group.group_name}(${group.group_id})] ${sender.nickname} >> ${TruncateString(await AutoReplaceCQCode(msg.originalContent, this, async (name, data) => {
+                    if (name.toLowerCase() == "at") {
+                        let user = (await group.refreshMemberInfo(this, +data["qq"]));
+                        if (user == null) {
+                            name = "@" + data["qq"];
+                        } else { name = "@" + user.nickname; }
+                    }
+                    return `§e${name}§d`;
+                }), 100)}`);
             break;
         }
         // case "discuss": {
@@ -596,7 +649,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             );
             let perms = ["Admin", "Member"];
             await group.refreshMemberInfo(this, member.user_id);
-            this.conf["NoticeLog"] && this.logger.info(`[${group.group_name}(${group.group_id})] 群管理员变动: ${member.card || member.nickname}(${member.user_id}) (${perms[+(obj.sub_type == "set")]})->(${perms[+(obj.sub_type == "unset")]})`);
+            this.conf["NoticeLog"] && this.logger.info(`[${group.group_name} (${group.group_id})]群管理员变动: ${member.card || member.nickname} (${member.user_id}) (${perms[+(obj.sub_type == "set")]}) -> (${perms[+(obj.sub_type == "unset")]})`);
             break;
         }
         case "group_decrease": {
@@ -616,13 +669,13 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
                 this.conf["NoticeLog"] && this.logger.info(`群聊: [${group.group_name}](${group.group_id}) 已解散`);
             } else if (obj.user_id == this.LoginInfo.user_id) {
                 this.Groups.delete(group.group_id);
-                this.conf["NoticeLog"] && this.logger.info(`登录号${["被踢出", "离开"][+(obj.sub_type != "kick_me")]}群聊: ${group.group_name}(${group.group_id})`);
+                this.conf["NoticeLog"] && this.logger.info(`登录号${["被踢出", "离开"][+(obj.sub_type != "kick_me")]} 群聊: ${group.group_name} (${group.group_id})`);
             } else if (obj.sub_type == "leave") {
                 if (member.role == "owner") {
                     (group.getAdmins(false) as Map<number, GroupMemberInfo>).delete(member.user_id);
                 }
                 (group.getMembers(false) as Map<number, GroupMemberInfo>).delete(member.user_id);
-                this.conf["NoticeLog"] && this.logger.info(`[${group.group_name}(${group.group_id})] 成员 ${member.card || member.nickname}(${member.user_id}) 退出群聊`);
+                this.conf["NoticeLog"] && this.logger.info(`[${group.group_name} (${group.group_id})] 成员 ${member.card || member.nickname} (${member.user_id}) 退出群聊`);
             }
             break;
         }
@@ -630,21 +683,21 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             let val = await this.getGroupInfo(obj.group_id, false);
             let data = val.data;
             if (!data) {
-                this.logger.error(`无法获取群聊 <${obj.group_id}> 基础信息`);
+                this.logger.error(`无法获取群聊 < ${obj.group_id}> 基础信息`);
                 return;
             }
             let baseGroupInfo = new GroupBaseInfo(data);
             let strangeInfo = await this.getStrangerInfoEx(obj.user_id);
             let op = await this.getStrangerInfoEx(obj.operator_id);
             if (obj.user_id == this.LoginInfo.user_id) {
-                this.conf["NoticeLog"] && this.logger.info(`登录号加入群聊: ${baseGroupInfo.group_name}(${baseGroupInfo.group_id})!`);
+                this.conf["NoticeLog"] && this.logger.info(`登录号加入群聊: ${baseGroupInfo.group_name} (${baseGroupInfo.group_id}) !`);
                 let group = new GroupInfo({ "group_name": baseGroupInfo.group_name, "group_id": baseGroupInfo.group_id });
                 await group._init(this);
                 this.Groups.set(baseGroupInfo.group_id, group);
             } else {
                 let group = await SafeGetGroupInfo.call(this, obj.group_id);
                 let member = (await group.refreshMemberInfo(this, obj.user_id))!;
-                this.conf["NoticeLog"] && this.logger.info(`[${group.group_name}(${group.group_id})] 加入新成员: ${strangeInfo?.nickname}(${member.user_id})`);
+                this.conf["NoticeLog"] && this.logger.info(`[${group.group_name} (${group.group_id})]加入新成员: ${strangeInfo?.nickname} (${member.user_id})`);
             }
             this.events.onGroupJoin.fire(
                 "OneBotDockingProcess_Event_GroupJoin",
@@ -1056,7 +1109,7 @@ export class OneBotDocking {
                     try {
                         this._RequestCallbacks[echo](obj as { "status": status, "retcode": retcode, "data": null | any });
                         delete this._RequestCallbacks[echo];
-                    } catch (e) { this.logger.error(`Error in RequestCallback: ${(e as Error).stack}`); }
+                    } catch (e) { this.logger.error(`Error in RequestCallback: ${(e as Error).stack} `); }
                 }
                 return;
             }
@@ -1082,7 +1135,7 @@ export class OneBotDocking {
             }
         });
         this.wsc.events.onClose.on((code, desc) => {
-            // this.logger.warn(`WS已断开!退出码: ${code}, DESC:${desc}`);
+            // this.logger.warn(`WS已断开!退出码: ${ code }, DESC:${ desc } `);
             // this._events.onClientClose.fire(
             //     "OneBotDockingProcess_Event_ClientClose"
             // );
@@ -1126,7 +1179,7 @@ export class OneBotDocking {
             "user_id": data.user_id,
             "nickname": data.nickname
         }
-        this.logger.info(`登陆号信息获取完成: ${data.nickname}(${data.user_id})`);
+        this.logger.info(`登陆号信息获取完成: ${data.nickname} (${data.user_id})`);
         return true;
     }
     async _loadFriends() {
@@ -1146,7 +1199,7 @@ export class OneBotDocking {
             let i = 0;
             data.forEach((val) => {
                 this._Friends.set(val.user_id, new FriendInfo(val));
-                this.logger.info(`加载好友: ${val.remark || val.nickname}(${val.user_id})`);
+                this.logger.info(`加载好友: ${val.remark || val.nickname} (${val.user_id})`);
                 i++;
             });
             this.logger.info(`加载完成!共 ${i} 个好友!`);
@@ -1476,34 +1529,34 @@ export class OneBotDocking {
     }
     /**
      * @note ```
-     * invited_requests	InvitedRequest[] 邀请消息列表
-     * join_requests	JoinRequest[]	 进群消息列表
-     * 
+                * invited_requests	InvitedRequest[] 邀请消息列表
+                    * join_requests	JoinRequest[]	 进群消息列表
+                        * 
      * -----------------------------------------
-     * |              InvitedRequest           |
-     * |----------------------------------------
-     * |字段         |类型   |说明             |
-     * |request_id   |int64  |请求ID           |
-     * |invitor_uin  |int64  |邀请者           |
-     * |invitor_nick |string |邀请者昵称       |
-     * |group_id     |int64  |群号             |
-     * |group_name   |string |群名             |
-     * |checked	     |bool   |是否已被处理     |
-     * |actor	     |int64  |处理者, 未处理为0|
+     * | InvitedRequest |
+     * | ----------------------------------------
+     * | 字段 | 类型 | 说明 |
+     * | request_id | int64 | 请求ID |
+     * | invitor_uin | int64 | 邀请者 |
+     * | invitor_nick | string | 邀请者昵称 |
+     * | group_id | int64 | 群号 |
+     * | group_name | string | 群名 |
+     * | checked | bool | 是否已被处理 |
+     * | actor | int64 | 处理者, 未处理为0 |
      * -----------------------------------------
      * 
      * --------------------------------------------
-     * |               JoinRequest                |
-     * |-------------------------------------------
-     * |字段	       |类型   | 说明             |
-     * |request_id     |int64  |请求ID            |
-     * |requester_uin  |int64  |请求者ID          |
-     * |requester_nick |string |请求者昵称        |
-     * |message        |string |验证消息          |
-     * |group_id       |int64  |群号              |
-     * |group_name     |string |群名              |
-     * |checked        |bool   |是否已被处理      |
-     * |actor          |int64  |处理者, 未处理为0 |
+     * | JoinRequest |
+     * | -------------------------------------------
+     * | 字段 | 类型 | 说明 |
+     * | request_id | int64 | 请求ID |
+     * | requester_uin | int64 | 请求者ID |
+     * | requester_nick | string | 请求者昵称 |
+     * | message | string | 验证消息 |
+     * | group_id | int64 | 群号 |
+     * | group_name | string | 群名 |
+     * | checked | bool | 是否已被处理 |
+     * | actor | int64 | 处理者, 未处理为0 |
      * --------------------------------------------
      * ```
      */
@@ -1532,23 +1585,23 @@ export class OneBotDocking {
     }
     /**
      * @note ```
-     * (自行使用new套入对接对象)
-     * data: null |
+                * (自行使用new套入对接对象)
+                * data: null |
      * files	File[]	文件列表
-     * folders	Folder[]	文件夹列表
-     * ```
+                * folders	Folder[]	文件夹列表
+                    * ```
      */
     async getGroupRootFiles(group_id: number) {
         return await this._SendReqPro("get_group_root_files", { group_id });
     }
     /**
      * @note ```
-     *  (自行使用new套入对接对象)
-     * data: null |
+                    * (自行使用new套入对接对象)
+                    * data: null |
      * 字段	类型	说明
-     * files	FileProInfo[]	文件列表
-     * folders	FolderInfo[]	文件夹列表
-     * ```
+                * files	FileProInfo[]	文件列表
+                    * folders	FolderInfo[]	文件夹列表
+                        * ```
      */
     async getGroupFilesByFolder(group_id: number, folder_id: string) {
         return await this._SendReqPro("get_group_files_by_folder", { group_id, folder_id });
@@ -1591,28 +1644,28 @@ export class OneBotDocking {
     }
     /**
      * @note ```
-     * data: null |
+                        * data: null |
      * {
-     * sender_id:	int64	发送者QQ 号
-     * sender_nick:	string	发送者昵称
-     * sender_time:	int64	消息发送时间
-     * operator_id:	int64	操作者QQ 号
-     * operator_nick:	string	操作者昵称
-     * operator_time:	int64	精华设置时间
-     * message_id:	int32	消息ID
+                                * sender_id: int64	发送者QQ 号
+     * sender_nick: string	发送者昵称
+     * sender_time: int64	消息发送时间
+     * operator_id: int64	操作者QQ 号
+     * operator_nick: string	操作者昵称
+     * operator_time: int64	精华设置时间
+     * message_id: int32	消息ID
      * }[]
-     * ```
+                            * ```
      */
     async getEssenceMsgList(group_id: number) {
         return await this._SendReqPro("get_essence_msg_list", { group_id });
     }
     /**
      * @note ```
-     * data: null |
+                            * data: null |
      * {
-     * "level": number//安全等级, 1: 安全 2: 未知 3: 危险
+                                    * "level": number//安全等级, 1: 安全 2: 未知 3: 危险
      * }
-     * ```
+                                * ```
      */
     async checkUrlSafely(url: string) {
         return await this._SendReqPro("check_url_safely", { url });
