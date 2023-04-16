@@ -1136,6 +1136,7 @@ export class OneBotDocking {
         });
         this.wsc.events.onClose.on((code, desc) => {
             // this.logger.warn(`WS已断开!退出码: ${ code }, DESC:${ desc } `);
+
             // this._events.onClientClose.fire(
             //     "OneBotDockingProcess_Event_ClientClose"
             // );
