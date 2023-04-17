@@ -3,9 +3,22 @@ import { Version } from "../app";
 import { Logger } from "../tools/logger";
 import { WebsocketClient } from "./WebSocket";
 import { Event } from "./Event";
+import { AnonymousInfo } from "./QQDataTypes/AnonymousInfo";
+import { DeviceInfo } from "./QQDataTypes/DeviceInfo";
+import { FileInfo } from "./QQDataTypes/FileInfo";
+import { FriendInfo } from "./QQDataTypes/FriendInfo";
+import { GroupBaseInfo } from "./QQDataTypes/GroupBaseInfo";
+import { GroupInfo } from "./QQDataTypes/GroupInfo";
+import { GroupMemberInfo } from "./QQDataTypes/GroupMemberInfo";
+import { HonorType } from "./QQDataTypes/HonorType";
+import { MsgInfo } from "./QQDataTypes/MsgInfo";
+import { OfflineFileInfo } from "./QQDataTypes/OfflineFileInfo";
+import { SenderInfo } from "./QQDataTypes/SenderInfo";
+import { StrangerInfo } from "./QQDataTypes/StrangerInfo";
 
 
 // let logger = new Logger("Bot", LoggerLevel.Info);
+
 
 export type obj = { [key: string]: any };
 
@@ -27,478 +40,6 @@ export type retcode = number;
  */
 export type status = "ok" | "failed" | "async";
 
-export class FriendInfo {
-    constructor(private obj: {
-        "user_id": number,
-        "nickname": string,
-        "remark": string
-    }) { }
-    /**
-     * 向好友发送消息(方便函数)
-     */
-    sendMsg(_this: OneBotDocking, msg: string) {
-        return _this.sendMsg("private", this.obj.user_id, msg);
-    }
-    get user_id() { return this.obj.user_id; }
-    get nickname() { return this.obj.nickname; }
-    set nickname(a) { this.obj.nickname = a; }
-    get remark() { return this.obj.remark; }
-    set remark(a) { this.obj.remark = a; }
-}
-
-export class UnidirectionalFriendInfo {
-    constructor(private obj: {
-        "user_id": number,
-        "nickname": string,
-        "source": string
-    }) { }
-    /**
-     * 向单向好友发送消息(方便函数)
-     * 可能失败
-     */
-    sendMsg(_this: OneBotDocking, msg: string) {
-        return _this.sendMsg("private", this.obj.user_id, msg);
-    }
-    get user_id() { return this.obj.user_id; }
-    get nickname() { return this.obj.nickname; }
-    get source() { return this.obj.source; }
-}
-
-export class SenderInfo {
-    constructor(private obj:
-        {
-            "user_id": number,  //发送者 QQ 号
-            "nickname": string,	//昵称
-            "sex": string,	    //性别，male 或 female 或 unknown
-            "age": number	    //年龄
-        }) { }
-    /**获取好友对象(可能失败)*/
-    getFriend(_this: OneBotDocking) {
-        return _this.getFriendInfoSync(this.obj.user_id);
-    }
-    /**
-     * 向TA发送消息(方便函数)
-     * 极有可能失败,谨慎使用
-     */
-    sendMsg(_this: OneBotDocking, msg: string) {
-        return _this.sendMsg("private", this.obj.user_id, msg);
-    }
-    get user_id() { return this.obj.user_id; }
-    get nickname() { return this.obj.nickname; }
-    set nickname(a) { this.obj.nickname = a; }
-    //不准,极为可能为unknown
-    get sex() { return this.obj.sex; }
-    //不准
-    get age() { return this.obj.age; }
-}
-
-/**
- * 请勿长期保存
- */
-export class GroupBaseInfo {
-    constructor(private obj: {
-        "group_id": number,
-        "group_name": string,
-        "member_count": number,
-        "max_member_count": number
-    }) { }
-    get group_id() {
-        return this.obj.group_id;
-    }
-    get group_name() { return this.obj.group_name; }
-    get member_count() { return this.obj.member_count; }
-    get max_member_count() { return this.obj.max_member_count; }
-}
-
-export class GroupInfo {
-    private _Owner: GroupMemberInfo | undefined;
-    private _Admins = new Map<number, GroupMemberInfo>();
-    private _Members = new Map<number, GroupMemberInfo>();
-    private _RefreshMap = new Map<number, number>();
-    constructor(private obj: {
-        "group_id": number,
-        "group_name": string
-    }) { }
-    async _init(_this: OneBotDocking) {
-        _this.logger.info(`正在初始化群信息: ${this.obj.group_name}(${this.obj.group_id})...`);
-        let val = await _this.getGroupMemberList(this.obj.group_id);
-        let data = val.data;
-        if (data == null) {
-            _this.logger.info(`初始化群信息: ${this.obj.group_name}(${this.obj.group_id}) 失败!`);
-            return;
-        }
-        (data as any[]).forEach((val) => {
-            let memberInfo = new GroupMemberInfo(val);
-            if (memberInfo.role == "owner") {
-                this._Owner = memberInfo;
-            } else if (memberInfo.role == "admin") {
-                this._Admins.set(memberInfo.user_id, memberInfo);
-            }
-            this._Members.set(memberInfo.user_id, memberInfo);
-            // logger.info(`- 群成员: ${memberInfo.card || memberInfo.nickname}(${memberInfo.user_id}) 已记录!`);
-        });
-        let ow = this._Owner!;
-        _this.logger.info(`初始化群成员信息: ${this.obj.group_name}(${this.obj.group_id}) 成功!群主: ${ow.card || ow.nickname}(${ow.user_id}),共计 ${this._Members.size} 个群成员, ${this._Admins.size} 个管理员`);
-        // logger.info(JSON.stringify(data, null, 2));
-    }
-    /**
-     * 方便函数,快捷发送群消息
-     */
-    sendMsg(_this: OneBotDocking, msg: string) {
-        return _this.sendMsg("group", this.obj.group_id, msg);
-    }
-    async getBaseData(_this: OneBotDocking) {
-        let val = await _this.getGroupInfo(this.obj.group_id, false);
-        let data = val.data;
-        if (data == null) {
-            _this.logger.error(`获取群聊: ${this.obj.group_id} 基础信息失败!`);
-            return;
-        }
-        return new GroupBaseInfo(data);
-    }
-    async refreshMemberInfo(_this: OneBotDocking, user_id: number) {
-        let time = Date.now();
-        let mem = this._Members.get(user_id);
-        if ((time - (this._RefreshMap.get(user_id) || time)) < 500) {
-            return mem;
-        }
-
-        let val = await _this.getGroupMemberInfoEx(+this.obj.group_id, +user_id, true);
-        if (!val) {
-            _this.logger.error(`[${this.obj.group_name}(${this.obj.group_id})] 刷新成员 ${mem == null ? user_id : `${mem.card || mem.nickname}(${mem.user_id})`} 信息失败!`);
-            return mem;
-        }
-        this._RefreshMap.set(user_id, time);
-        // console.log(val)
-        switch (val.role) {
-            case "owner":
-                this._Owner = val;
-                break;
-            case "admin":
-                this._Admins.set(val.user_id, val);
-                this._Members.set(val.user_id, val);
-                break;
-            case "member":
-                this._Admins.delete(val.user_id);
-                this._Members.set(val.user_id, val);
-
-                break;
-        }
-        return val;
-    }
-    get Owner() { return this._Owner; }
-    getAdmins(useArr: boolean) {
-        if (useArr) {
-            let obj: { [key: number]: GroupMemberInfo } = {};
-            let iters = this._Admins.entries(),
-                iter = iters.next();
-            while (!iter.done) {
-                let v = iter.value;
-                obj[v[0]] = v[1];
-                iter = iters.next();
-            }
-            return obj;
-        } else { return this._Admins; }
-    }
-    getMembers(useArr: boolean) {
-        if (useArr) {
-            let obj: { [key: number]: GroupMemberInfo } = {};
-            let iters = this._Members.entries(),
-                iter = iters.next();
-            while (!iter.done) {
-                let v = iter.value;
-                obj[v[0]] = v[1];
-                iter = iters.next();
-            }
-            return obj;
-        } else { return this._Members; }
-    }
-    get group_name() { return this.obj.group_name; }
-    set group_name(a) { this.obj.group_name = a; }
-    get group_id() { return this.obj.group_id; }
-    set group_id(a) { this.obj.group_id = a; }
-    senderGetMember(sender: SenderInfo) {
-        return this._Members.get(sender.user_id);
-    }
-    strangerGetMember(stranger: StrangerInfo) {
-        return this._Members.get(stranger.user_id);
-    }
-    getMember(user_id: number) {
-        return this._Members.get(user_id);
-    }
-}
-
-export class GroupMemberInfo {
-    constructor(private obj: {
-        "group_id": number,
-        "user_id": number,
-        "nickname": string,
-        "card": string,
-        "sex": "male" | "female" | "unknown",
-        "age": number,
-        "join_time": number,
-        "last_sent_time": number,
-        "level": "unknown",
-        "role": "member" | "admin" | "owner",
-        "unfriendly": boolean,
-        "title": string,
-        "title_expire_time": number | 0,
-        "card_changeable": boolean,
-        "shut_up_timestamp": number | undefined,
-    }) { }
-    /**
-     * 设置禁言
-     * (可能无权限失败)
-     * @param time 秒,0取消
-     */
-    setMute(_this: OneBotDocking, time: number) {
-        return _this.groupMute(this.obj.group_id, this.obj.user_id, time);
-    }
-    /**
-     * 方便函数
-     * 获取这个群成员对应的群对象
-     */
-    getGroup(_this: OneBotDocking) {
-        return _this.getGroupInfoSync(this.obj.group_id);
-    }
-    /**
-     * 方便函数
-     * 可能发送失败
-     */
-    sendMsg(_this: OneBotDocking, msg: string) {
-        return _this.sendMsg("private", this.obj.user_id, msg);
-    }
-    get group_id() { return this.obj.group_id; }
-    get user_id() { return this.obj.user_id; }
-    get nickname() { return this.obj.nickname; }
-    set nickname(a) { this.obj.nickname = a; }
-    get card() { return this.obj.card; }
-    set card(a) { this.obj.card = a; }
-    //不准确
-    get sex() { return this.obj.sex; }
-    //不准确
-    get age() { return this.obj.age; }
-    //不准确
-    get join_time() { return this.obj.join_time; }
-    get last_sent_time() { return this.obj.last_sent_time; }
-    get level() { return this.obj.level; }
-    get role() { return this.obj.role; }
-    set role(a) { this.obj.role = a; }
-    get unfriendly() { return this.obj.unfriendly; }
-    set unfriendly(a) { this.obj.unfriendly = a; }
-    get title() { return this.obj.title; }
-    set title(a) { this.obj.title = a; }
-    //不准确
-    get title_expire_time() { return this.obj.title_expire_time; }
-    get card_changeable() { return this.obj.card_changeable; }
-    get shut_up_timestamp() { return this.obj.shut_up_timestamp; }
-}
-
-export class StrangerInfo {
-    constructor(private obj: {
-        "user_id": number,
-        "nickname": string,
-        "sex": "male" | "female" | "unknown",
-        "age": number,
-        "qid": string | undefined,
-        "level": number | undefined,
-        "login_days": number | undefined
-    }) { }
-    /**
-     * 方便函数
-     * 可能发送失败
-     */
-    sendMsg(_this: OneBotDocking, msg: string) {
-        return _this.sendMsg("private", this.obj.user_id, msg);
-    }
-    get user_id() { return this.obj.user_id; }
-    get nickname() { return this.obj.nickname; }
-    set nickname(a) { this.obj.nickname = a; }
-    /**
-     * 不准,默认unknown
-     */
-    get sex() { return this.obj.sex; }
-    /**
-     * 不准,默认0
-     */
-    get age() { return this.obj.age; }
-    get qid() { return this.obj.qid; }
-    get level() { return this.obj.level; }
-    get login_days() { return this.obj.login_days; }
-}
-
-export class AnonymousInfo {
-    constructor(
-        private group_id: number,
-        private obj: {
-            "id": number,
-            "name": string,
-            "flag": string
-        }) { }
-    /**
-     * 设置禁言
-     * (可能无权限失败)
-     * @param time 秒,0取消
-     */
-    setMute(_this: OneBotDocking, time: number) {
-        return _this.groupMuteAnonymous(this.group_id, this.obj.flag, time);
-    }
-    get id() { return this.obj.id; }
-    get name() { return this.obj.name; }
-    get flag() { return this.obj.flag; }
-
-    get isValid() { return this.obj == null; }
-}
-
-export type Msg_Info = {
-    "type": string,
-    "data": { [key: string]: string }
-};
-
-export class MsgInfo {
-    constructor(private obj: {
-        "message": string | Array<Msg_Info>,
-        "raw_message": string,
-        "message_id": number
-    }) { }
-    delete(_this: OneBotDocking) {
-        return _this.deleteMsg(this.obj.message_id);
-    }
-    /** 转义过特殊字符的 */
-    get originalContent() {
-        return this.obj.raw_message.replace(/&amp\;/g, "&")
-            .replace(/&#91\;/g, "[")
-            .replace(/&#93\;/g, "]")
-            .replace(/&#44\;/g, ",");
-    }
-    get msg() { return this.obj.message; }
-    get raw() { return this.obj.raw_message; }
-    get msg_id() { return this.obj.message_id; }
-}
-
-export class FileInfo {
-    constructor(private obj: {
-        "id": string,
-        "name": string,
-        "size": number,
-        "busid": number
-    }) { }
-    get id() { return this.obj.id; }
-    get name() { return this.obj.name; }
-    get size() { return this.obj.size; }
-    get busid() { return this.obj.busid; }
-}
-
-export class FileInfoPro {
-    constructor(private obj: {
-        "group_id": number,
-        "file_id": string,
-        "file_name": string,
-        "busid": number,
-        "file_size": number,
-        "upload_time": number,
-        "dead_time": number,
-        "modify_time": number,
-        "download_times": number,
-        "uploader": number,
-        "uploader_name": string
-    }) { }
-    get group_id() { return this.obj.group_id; }
-    get file_id() { return this.obj.file_id; }
-    get file_name() { return this.obj.file_name; }
-    get busid() { return this.obj.busid; }
-    get file_size() { return this.obj.file_size; }
-    //上传时间
-    get upload_time() { return this.obj.upload_time; }
-    //过期时间,永久文件恒为0
-    get dead_time() { return this.obj.dead_time; }
-    //最后修改时间
-    get modify_time() { return this.obj.modify_time; }
-    //下载次数
-    get download_times() { return this.obj.download_times; }
-    //上传者ID
-    get uploader() { return this.obj.uploader; }
-    get uploader_name() { return this.obj.uploader_name; }
-}
-
-export class OfflineFileInfo {
-    constructor(private obj: {
-        "name": string,
-        "size": number,
-        "url": string
-    }) { }
-    get name() { return this.obj.name; }
-    get size() { return this.obj.size; }
-    get url() { return this.obj.url; }
-}
-
-export class DeviceInfo {
-    constructor(private obj: {
-        "app_id": number,
-        "device_name": string,
-        "device_kind": string
-    }) { }
-    get app_id() { return this.obj.app_id; }
-    get device_name() { return this.obj.device_name; }
-    /** 设备类型 */
-    get device_kind() { return this.obj.device_kind; }
-}
-
-export class ForwardMsg {
-    constructor(private obj: {
-        "content": string,
-        "sender": {
-            "nickname": string,
-            "user_id": number
-        },
-        "time": number
-    }) { }
-    get content() { return this.obj.content; }
-    get sender() { return this.obj.sender; }
-    get time() { return this.obj.time; }
-}
-
-export class FolderInfo {
-    constructor(private obj: {
-        "group_id": number,
-        "folder_id": number,
-        "folder_name": string,
-        "create_time": number,
-        "creator": number,
-        "creator_name": string,
-        "total_file_count": number
-    }) { }
-    get group_id() { return this.obj.group_id; }
-    get folder_id() { return this.obj.folder_id; }
-    get folder_name() { return this.obj.folder_name; }
-    get create_time() { return this.obj.create_time; }
-    get creator() { return this.obj.creator; }
-    get creator_name() { return this.obj.creator_name; }
-    get total_file_count() { return this.obj.total_file_count; }
-}
-
-export class GroupFileSystemInfo {
-    constructor(private obj: {
-        "file_count": number,
-        "limit_count": number,
-        "used_space": number,
-        "total_space": number
-    }) { }
-    //文件总数
-    get file_count() { return this.obj.file_count; }
-    //文件上限
-    get limit_count() { return this.obj.limit_count; }
-    //已使用空间
-    get used_space() { return this.obj.used_space; }
-    //空间上限
-    get total_space() { return this.obj.total_space; }
-}
-
-export enum HonorType {
-    龙王 = "talkative",
-    群聊之火 = "performer",
-    快乐源泉 = "emotion"
-}
 
 async function SafeGetGroupInfo(this: OneBotDocking, group_id: number) {
     let group = this.getGroupInfoSync(group_id);
@@ -1530,35 +1071,37 @@ export class OneBotDocking {
     }
     /**
      * @note ```
-                * invited_requests	InvitedRequest[] 邀请消息列表
-                    * join_requests	JoinRequest[]	 进群消息列表
-                        * 
-     * -----------------------------------------
-     * | InvitedRequest |
-     * | ----------------------------------------
-     * | 字段 | 类型 | 说明 |
-     * | request_id | int64 | 请求ID |
-     * | invitor_uin | int64 | 邀请者 |
-     * | invitor_nick | string | 邀请者昵称 |
-     * | group_id | int64 | 群号 |
-     * | group_name | string | 群名 |
-     * | checked | bool | 是否已被处理 |
-     * | actor | int64 | 处理者, 未处理为0 |
-     * -----------------------------------------
+     * invited_requests	InvitedRequest[] 邀请消息列表
+     * join_requests	JoinRequest[]	 进群消息列表
      * 
-     * --------------------------------------------
-     * | JoinRequest |
-     * | -------------------------------------------
-     * | 字段 | 类型 | 说明 |
-     * | request_id | int64 | 请求ID |
-     * | requester_uin | int64 | 请求者ID |
-     * | requester_nick | string | 请求者昵称 |
-     * | message | string | 验证消息 |
-     * | group_id | int64 | 群号 |
-     * | group_name | string | 群名 |
-     * | checked | bool | 是否已被处理 |
-     * | actor | int64 | 处理者, 未处理为0 |
-     * --------------------------------------------
+     * --------------------------------------------------
+     * |            InvitedRequest                      |
+     * |------------------------------------------------|
+     * |     字段     |    类型    |    说明             |
+     * |------------------------------------------------|
+     * |  request_id  |   int64   |   请求ID            |
+     * |  invitor_uin |   int64   |   邀请者            |
+     * |  invitor_nick|   string  |   邀请者昵称         |
+     * |   group_id   |   int64   |    群号             |
+     * |  group_name  |   string  |    群名             |
+     * |    checked   |   bool    | 是否已被处理        |
+     * |     actor    |   int64   | 处理者, 未处理为0   |
+     * ------------------------------------------------
+     * 
+     * --------------------------------------------------
+     * |                JoinRequest                     |
+     * | -----------------------------------------------|
+     * |    字段        |  类型     |       说明         |
+     * |------------------------------------------------|
+     * | request_id     | int64     | 请求ID            |
+     * | requester_uin  | int64     | 请求者ID          |
+     * | requester_nick | string    | 请求者昵称        |
+     * | message        | string    | 验证消息          |
+     * | group_id       | int64     | 群号              |
+     * | group_name     | string    | 群名              |
+     * | checked        | bool      | 是否已被处理      |
+     * | actor          | int64     | 处理者, 未处理为0 |
+     * -------------------------------------------------
      * ```
      */
     async getGroupSystemMsg() {
@@ -1586,23 +1129,23 @@ export class OneBotDocking {
     }
     /**
      * @note ```
-                * (自行使用new套入对接对象)
-                * data: null |
+     * (自行使用new套入对接对象)
+     * data: null |
      * files	File[]	文件列表
-                * folders	Folder[]	文件夹列表
-                    * ```
+     * folders	Folder[]	文件夹列表
+     * ```
      */
     async getGroupRootFiles(group_id: number) {
         return await this._SendReqPro("get_group_root_files", { group_id });
     }
     /**
      * @note ```
-                    * (自行使用new套入对接对象)
-                    * data: null |
+     * (自行使用new套入对接对象)
+     * data: null |
      * 字段	类型	说明
-                * files	FileProInfo[]	文件列表
-                    * folders	FolderInfo[]	文件夹列表
-                        * ```
+     * files	FileProInfo[]	文件列表
+     * folders	FolderInfo[]	文件夹列表
+     * ```
      */
     async getGroupFilesByFolder(group_id: number, folder_id: string) {
         return await this._SendReqPro("get_group_files_by_folder", { group_id, folder_id });
@@ -1645,9 +1188,9 @@ export class OneBotDocking {
     }
     /**
      * @note ```
-                        * data: null |
+     * data: null |
      * {
-                                * sender_id: int64	发送者QQ 号
+     * sender_id: int64	发送者QQ 号
      * sender_nick: string	发送者昵称
      * sender_time: int64	消息发送时间
      * operator_id: int64	操作者QQ 号
@@ -1655,18 +1198,18 @@ export class OneBotDocking {
      * operator_time: int64	精华设置时间
      * message_id: int32	消息ID
      * }[]
-                            * ```
+     * ```
      */
     async getEssenceMsgList(group_id: number) {
         return await this._SendReqPro("get_essence_msg_list", { group_id });
     }
     /**
      * @note ```
-                            * data: null |
+     * data: null |
      * {
-                                    * "level": number//安全等级, 1: 安全 2: 未知 3: 危险
+     *     "level": number//安全等级, 1: 安全 2: 未知 3: 危险
      * }
-                                * ```
+     * ```
      */
     async checkUrlSafely(url: string) {
         return await this._SendReqPro("check_url_safely", { url });
@@ -1677,15 +1220,40 @@ export class OneBotDocking {
     //#endregion
 
     //#region 频道API
-    // /**
-    //  * 获取频道系统内BOT的资料
-    //  */
-    // async getGuildServiceProfile() {
-    //     return (await this._SendReqPro("get_guild_service_profile", {})) as {
-    //         "status": status, "retcode": number, "data": { "nickname": string, "tiny_id": string, "avatar_url": string }
-    //     };
-    // }
+    /**
+     * 获取频道系统内BOT的资料
+     */
+    async getGuildServiceProfile() {
+        return (await this._SendReqPro("get_guild_service_profile", {})) as {
+            "status": status, "retcode": number, "data": { "nickname": string, "tiny_id": string, "avatar_url": string }
+        };
+    }
+
+    async getGuildList() {
+        return (await this._SendReqPro("get_guild_list", {})) as {
+            "status": status, "retcode": number, "data": {}
+        }
+    }
 
 
     //#endregion
 }
+
+
+
+
+
+export {
+    AnonymousInfo,
+    DeviceInfo,
+    FileInfo,
+    FriendInfo,
+    GroupBaseInfo,
+    GroupInfo,
+    GroupMemberInfo,
+    HonorType,
+    MsgInfo,
+    OfflineFileInfo,
+    SenderInfo,
+    StrangerInfo
+};
