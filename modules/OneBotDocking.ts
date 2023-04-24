@@ -1481,7 +1481,7 @@ class Guild {
     async getGuildMemberProfileEx(guild_id: string, tiny_id: string) {
         let res = await this.getGuildMemberProfile(guild_id, tiny_id);
         if (res.data == null) {
-            logger.error(`获取频道 ${guild_id} 成员 ${tiny_id} 信息失败!`);
+            this.log.error(`获取频道 ${guild_id} 成员 ${tiny_id} 信息失败!`);
             return;
         }
         return new GuildMemberProfileInfo(res.data);
