@@ -1,4 +1,5 @@
 import { BotDockingMgr } from "./modules/BotDockingMgr";
+import { ErrorPrint } from "./modules/ErrorPrint";
 import { PluginPackage } from "./modules/PluginLoader";
 import { JsonConfigFileClass } from "./tools/data";
 import { Logger } from "./tools/logger";
@@ -37,6 +38,11 @@ let TMBotConfig = new JsonConfigFileClass("./config/config.json", JSON.stringify
 process.on("uncaughtException", (err, _ori) => {
     logger.error(`程序出现未捕获的异常:`);
     logger.error(`Stack: ${err.stack}`);
+    ErrorPrint("TMBot_Unknown_Error", "Unknown", `调用堆栈:
+\`\`\`txt
+${err.stack}
+\`\`\`
+`, logger);
 });
 
 // process.on("uncaughtExceptionMonitor", (err, _ori) => {

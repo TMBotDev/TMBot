@@ -73,4 +73,5 @@ export class GroupMemberInfo {
     get title_expire_time() { return this.obj.title_expire_time; }
     get card_changeable() { return this.obj.card_changeable; }
     get shut_up_timestamp() { return this.obj.shut_up_timestamp; }
+    toString() { return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj)}`; }
 }

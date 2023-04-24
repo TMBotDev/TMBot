@@ -16,4 +16,5 @@ export class GroupFileSystemInfo {
     get used_space() { return this.obj.used_space; }
     //空间上限
     get total_space() { return this.obj.total_space; }
+    toString() { return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj)}`; }
 }

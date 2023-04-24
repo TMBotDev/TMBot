@@ -24,4 +24,5 @@ export class AnonymousInfo {
     get flag() { return this.obj.flag; }
 
     get isValid() { return this.obj == null; }
+    toString() { return `<Class::${this.constructor.name}>(Group: ${this.group_id})\n${JSON.stringify(this.obj)}`; }
 }

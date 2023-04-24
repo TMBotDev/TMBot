@@ -10,4 +10,5 @@ export class OfflineFileInfo {
     get name() { return this.obj.name; }
     get size() { return this.obj.size; }
     get url() { return this.obj.url; }
+    toString() { return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj)}`; }
 }

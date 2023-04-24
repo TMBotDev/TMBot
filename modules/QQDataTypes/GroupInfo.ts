@@ -121,4 +121,5 @@ export class GroupInfo {
     getMember(user_id: number) {
         return this._Members.get(user_id);
     }
+    toString() { return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj)}`; }
 }

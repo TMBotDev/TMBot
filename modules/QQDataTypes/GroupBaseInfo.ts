@@ -17,4 +17,5 @@ export class GroupBaseInfo {
     get group_name() { return this.obj.group_name; }
     get member_count() { return this.obj.member_count; }
     get max_member_count() { return this.obj.max_member_count; }
+    toString() { return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj)}`; }
 }

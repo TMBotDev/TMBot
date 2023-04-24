@@ -20,4 +20,5 @@ export class FriendInfo {
     set nickname(a) { this.obj.nickname = a; }
     get remark() { return this.obj.remark; }
     set remark(a) { this.obj.remark = a; }
+    toString() { return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj)}`; }
 }

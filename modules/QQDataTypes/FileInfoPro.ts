@@ -31,4 +31,5 @@ export class FileInfoPro {
     //上传者ID
     get uploader() { return this.obj.uploader; }
     get uploader_name() { return this.obj.uploader_name; }
+    toString() { return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj)}`; }
 }

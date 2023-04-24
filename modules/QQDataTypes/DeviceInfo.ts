@@ -11,4 +11,5 @@ export class DeviceInfo {
     get device_name() { return this.obj.device_name; }
     /** 设备类型 */
     get device_kind() { return this.obj.device_kind; }
+    toString() { return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj)}`; }
 }

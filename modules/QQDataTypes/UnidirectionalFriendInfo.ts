@@ -19,4 +19,5 @@ export class UnidirectionalFriendInfo {
     get user_id() { return this.obj.user_id; }
     get nickname() { return this.obj.nickname; }
     get source() { return this.obj.source; }
+    toString() { return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj)}`; }
 }

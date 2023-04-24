@@ -11,10 +11,15 @@ import { GroupBaseInfo } from "./QQDataTypes/GroupBaseInfo";
 import { GroupInfo } from "./QQDataTypes/GroupInfo";
 import { GroupMemberInfo } from "./QQDataTypes/GroupMemberInfo";
 import { HonorType } from "./QQDataTypes/HonorType";
-import { MsgInfo } from "./QQDataTypes/MsgInfo";
+import { MsgInfo, MsgInfoEx, Msg_Info } from "./QQDataTypes/MsgInfo";
 import { OfflineFileInfo } from "./QQDataTypes/OfflineFileInfo";
 import { SenderInfo } from "./QQDataTypes/SenderInfo";
 import { StrangerInfo } from "./QQDataTypes/StrangerInfo";
+import { GuildInfo } from "./QQChannelTypes/GuildInfo";
+import { ErrorPrint } from "./ErrorPrint";
+import { GuildMetaInfo } from "./QQChannelTypes/GuildMetaInfo";
+import { ChannelInfo } from "./QQChannelTypes/ChannelInfo";
+import { GuildMemberInfo, GuildMemberProfileInfo } from "./QQChannelTypes/GuildMemberInfo";
 
 
 // let logger = new Logger("Bot", LoggerLevel.Info);
@@ -100,12 +105,15 @@ async function AutoReplaceCQCode(msg: string, _this: OneBotDocking, fn: (name: s
     return msg;
 }
 
+/**
+ * 处理OneBot消息
+ */
 async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
     let sender = new SenderInfo(obj.sender);
     // console.log(obj.sender);
 
 
-    switch (obj.message_type as "private" | "group") {
+    switch (obj.message_type as "private" | "group" | "guild") {
         case "private": {
             let msg = new MsgInfo({ "message": obj.message, "message_id": obj.message_id, "raw_message": obj.raw_message });
             // this.MsgIDMap.set(msg.msg_id, msg);
@@ -159,12 +167,19 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
 
         //     break;
         // }
+        case "guild": {
+            ProcessOneBotGuildEvent.call(this, obj);
+            break;
+        }
     }
 }
 
+/**
+ * 处理OneBot通知
+ */
 async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
     // console.log(obj);
-    switch (obj.notice_type as "group_upload" | "group_admin" | "group_decrease" | "group_increase" | "group_ban" | "group_recall" | "friend_add" | "friend_recall" | "notify" | "group_card" | "offline_file" | "client_status" | "essence") {
+    switch (obj.notice_type as "group_upload" | "group_admin" | "group_decrease" | "group_increase" | "group_ban" | "group_recall" | "friend_add" | "friend_recall" | "notify" | "group_card" | "offline_file" | "client_status" | "essence" | "message_reactions_updated" | "channel_updated" | "channel_created" | "channel_destroyed") {
         case "group_upload": {
             let group = await SafeGetGroupInfo.call(this, obj.group_id);
             let member = group.getMember(obj.user_id)!;
@@ -419,12 +434,23 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
                 sender,
                 op,
                 msg
-            )
+            );
+            break;
+        }
+        /** 频道 */
+        case "channel_created":
+        case "channel_destroyed":
+        case "channel_updated":
+        case "message_reactions_updated": {
+            ProcessOneBotGuildEvent.call(this, obj);
             break;
         }
     }
 }
 
+/**
+ * 处理OneBot请求
+ */
 async function ProcessOneBotRequest(this: OneBotDocking, obj: obj) {
     // console.log(obj);
     switch (obj.request_type as "friend" | "group") {
@@ -456,6 +482,26 @@ async function ProcessOneBotRequest(this: OneBotDocking, obj: obj) {
     }
 }
 
+/**
+ * 处理OneBot频道事件(各类分支)
+ */
+async function ProcessOneBotGuildEvent(this: OneBotDocking, obj: obj) {
+    // console.log(obj)
+    switch (obj.post_type as "message" | "notice") {
+        case "message": {
+
+        }
+        case "notice": {
+
+
+        }
+    }
+}
+
+
+/**
+ * 处理OneBot元数据
+ */
 async function ProcessOneBotMetaEvent(this: OneBotDocking, obj: obj) {
     // console.log(obj);
     switch (obj.meta_event_type as "lifecycle" | "heartbeat") {
@@ -499,24 +545,42 @@ async function ProcessOneBotMetaEvent(this: OneBotDocking, obj: obj) {
 export class OneBotDocking {
     private _LoginInfo = { "user_id": -1, "nickname": "Unknown" };
     // public MsgIDMap = new Map<number, MsgInfo>();
-    private _RequestCallbacks: { [key: string]: ((obj: { "status": status, "retcode": retcode, "data": null | any }) => void) } = {};
+    private _RequestCallbacks: {
+        [key: string]: (obj: {
+            /** 异常解释,平时为空字段 */
+            "wording": string | undefined,
+            /** 异常类型,平时为空字段 */
+            "msg": string | undefined,
+            /** 异常解释(没有异常时为空字符串)(这个文档里面没写) */
+            "message": string,
+            "status": status, "retcode": retcode,
+            "data": null | any
+        }) => void
+    } = {};
     /**是否正在关闭*/
-    public _isClosing: boolean = false;
+    private _isClosing: boolean = false;
     private _Friends = new Map<number, FriendInfo>();
     private _Groups = new Map<number, GroupInfo>();
     private _IsInitd = false;//是否成功初始化
 
     private DelayLogger = { "error": (...msg: any[]) => { this.logger.error(...msg); } };
 
+    private _guild: undefined | Guild = new Guild(this);
+
     // public ShareData = new ShareData();
 
     private _events = {
         "onRawMessage": new Event<(rawInfo: string, ori: (isExecute: boolean, raw: string) => void) => void>(this.DelayLogger),
         /**
+         * ```
          * 初始化数据成功
-         * @note 此监听可能会重复触发,因为重新连接也会初始化一次数据
+         * 此监听会重复触发,因为重新连接也会初始化一次数据
+         * ```
          */
         "onInitSuccess": new Event<() => void>(this.DelayLogger),
+        /**
+         * 此监听可能会重复触发,因为重连机制
+         */
         "onClientDisconnect": new Event<() => void>(this.DelayLogger),
         "onClientDestroy": new Event<() => void>(this.DelayLogger),
         "onClientStatusChanged": new Event<(device: DeviceInfo, online: boolean) => void>(this.DelayLogger),
@@ -532,9 +596,9 @@ export class OneBotDocking {
         "onGroupJoin": new Event<(groupInfo: GroupBaseInfo, isInvite: boolean, strangerInfo: StrangerInfo, operator: StrangerInfo | undefined) => void>(this.DelayLogger),
         "onGroupWholeMute": new Event<(group: GroupInfo, isUnMute: boolean, operator: GroupMemberInfo) => void>(this.DelayLogger),
         "onGroupMute": new Event<(groupInfo: GroupInfo, isUnMute: boolean, memberInfo: GroupMemberInfo, operator: GroupMemberInfo) => void>(this.DelayLogger),
-        "onGroupRecall": new Event<(groupInfo: GroupInfo, memberInfo: GroupMemberInfo, operator: GroupMemberInfo, msg: MsgInfo) => void>(this.DelayLogger),
+        "onGroupRecall": new Event<(groupInfo: GroupInfo, memberInfo: GroupMemberInfo, operator: GroupMemberInfo, msg: MsgInfoEx) => void>(this.DelayLogger),
         "onFriendAdd": new Event<(strangerInfo: StrangerInfo) => void>(this.DelayLogger),
-        "onFriendRecall": new Event<(friendInfo: FriendInfo, msg: MsgInfo) => void>(this.DelayLogger),
+        "onFriendRecall": new Event<(friendInfo: FriendInfo, msg: MsgInfoEx) => void>(this.DelayLogger),
         "onFriendRequestAdd": new Event<(strangerInfo: StrangerInfo, comment: string, flag: string) => void>(this.DelayLogger),
         "onGroupRequestJoin": new Event<(groupInfo: GroupBaseInfo, isInviteSelf: boolean, strangerInfo: StrangerInfo, comment: string, flag: string) => void>(this.DelayLogger),
         "onGroupPoke": new Event<(group: GroupInfo, sender: GroupMemberInfo, target: GroupMemberInfo) => void>(this.DelayLogger),
@@ -543,7 +607,7 @@ export class OneBotDocking {
         "onGroupHonorChanged": new Event<(group: GroupInfo, honor: HonorType, member: GroupMemberInfo) => void>(this.DelayLogger),
         "onGroupCardChanged": new Event<(group: GroupInfo, member: GroupMemberInfo, card: string) => void>(this.DelayLogger),
         "onReceiveOfflineFile": new Event<(stranger: StrangerInfo, offlineFile: OfflineFileInfo) => void>(this.DelayLogger),
-        "onGroupEssenceMsgChanged": new Event<(group: GroupInfo, sub_type: "add" | "delete", sender: GroupMemberInfo, operator: GroupMemberInfo, msg: MsgInfo) => void>(this.DelayLogger),
+        "onGroupEssenceMsgChanged": new Event<(group: GroupInfo, sub_type: "add" | "delete", sender: GroupMemberInfo, operator: GroupMemberInfo, msg: MsgInfoEx) => void>(this.DelayLogger),
         /**
          * 心跳包触发
          * @note interval是心跳包触发时间
@@ -562,8 +626,8 @@ export class OneBotDocking {
         private wsc: WebsocketClient,
         public conf: { [key: string]: any }
     ) {
-        this._Init();
         this.logger = new Logger(Name, (Version.isDebug ? 5 : 4));
+        this._Init();
         if (!!(conf["LogFile"] || "").trim()) {
             this.logger.setFile(path.join("./logs", conf["LogFile"]));
         }
@@ -581,10 +645,16 @@ export class OneBotDocking {
      * 客户端是否正在关闭
      */
     get isClosing() { return this._isClosing; }
+    /**
+     * 频道相关
+     */
+    get guild() {
+        return this._guild;
+    }
 
     get Client() { return this.wsc; }
     get events() { return this._events; }
-    get LoginInfo() { return this._LoginInfo; }
+    get LoginInfo() { return { "user_id": this._LoginInfo.user_id, "nickname": this._LoginInfo.nickname }; }
     get Groups() { return this._Groups; }
     get Friends() { return this._Friends; }
 
@@ -621,6 +691,7 @@ export class OneBotDocking {
                 (await this._loadGroupsInfo())) {
                 this._events.onInitSuccess.fire("OneBotDockingProcess_Event_InitSuccess", null);
                 this.logger.info(`基础信息初始化成功!`);
+                if (!this._guild!._Init()) { this._guild = undefined; }
                 this._IsInitd = true;
             } else {
                 this.logger.fatal(`基础信息初始化失败!`);
@@ -648,7 +719,7 @@ export class OneBotDocking {
                 let echo = obj.echo as string;
                 if (this._RequestCallbacks[echo]) {
                     try {
-                        this._RequestCallbacks[echo](obj as { "status": status, "retcode": retcode, "data": null | any });
+                        this._RequestCallbacks[echo](obj as any);
                         delete this._RequestCallbacks[echo];
                     } catch (e) { this.logger.error(`Error in RequestCallback: ${(e as Error).stack} `); }
                 }
@@ -681,10 +752,15 @@ export class OneBotDocking {
             // this._events.onClientClose.fire(
             //     "OneBotDockingProcess_Event_ClientClose"
             // );
+            this._events.onClientDisconnect.fire(
+                "OneBotDockingProcess_Event_ClientDisconnect",
+                null
+            );
         });
         this.wsc.events.onDestroy.on(() => {
             this._events.onClientDestroy.fire(
-                "OneBotDockingProcess_Event_ClientClose", null
+                "OneBotDockingProcess_Event_ClientClose",
+                null
             );
         });
         this.events.onRawMessage.on((raw, ori) => {
@@ -694,13 +770,31 @@ export class OneBotDocking {
     _SendRequest(type: string, params: { [key: string]: any }, func: (obj: { "status": status, "retcode": retcode, "data": null | any }) => void) {
         if (this._isClosing) { return; }
         let id = Math.random().toString(16).slice(2);
-        this._RequestCallbacks[id] = func;
-        let content = {
+        let err = new Error("Error Stack");
+        this._RequestCallbacks[id] = (obj) => {
+            if (obj.msg != null) {
+                this.logger.error(`API [${type}] 调用错误回执: ${obj.msg}(${obj.wording})`);
+                if (obj.msg != "API_ERROR") {
+                    ErrorPrint(`Use_OneBot_Websocket_API: ${type}`, `${obj.msg}(${obj.wording!})`, `发送数据:
+\`\`\`json
+${content}
+\`\`\`
+调用堆栈:
+\`\`\`txt
+${err.stack}
+\`\`\``, this.logger);
+                } else {
+                    this.logger.warn(`API异常!请检查 OneBot 状况!`);
+                }
+            }
+            func(obj);
+        };
+        let content = JSON.stringify({
             "action": type,
             "params": params,
             "echo": id
-        };
-        this.wsc.send(JSON.stringify(content));
+        });
+        this.wsc.send(content);
     }
     _SendReqPro(type: string, params: { [key: string]: any }) {
         let pro = new Promise<{ "status": status, "retcode": retcode, "data": null | any }>((outMsg, outErr) => {
@@ -710,6 +804,7 @@ export class OneBotDocking {
         });
         return pro;
     }
+
     async _loadLoginInfo() {
         let val = await this.getLoginInfo();
         let data = val.data;
@@ -789,7 +884,7 @@ export class OneBotDocking {
         }[]) | null;
         if (data == null) {
             this.logger.error(`刷新好友列表失败!`);
-            return;
+            return false;
         }
         this._Friends.clear();
         data.forEach((val) => {
@@ -801,36 +896,58 @@ export class OneBotDocking {
 
     async getGroupBaseInfoEx(group_id: number) {
         let data = (await this.getGroupInfo(group_id, true)).data;
-        if (!data) { return; }
+        if (!data) {
+            this.logger.error(`获取群聊 ${group_id} 基础信息失败!`);
+            return;
+        }
         return new GroupBaseInfo(data);
     }
 
     async getStrangerInfoEx(user_id: number, no_cache: boolean = true) {
         let val = await this.getStrangerInfo(user_id, no_cache);
         let data = val.data;
-        if (data == null) { return; }
+        if (data == null) {
+            this.logger.error(`获取陌生人 ${user_id} 信息失败!`);
+            return;
+        }
         return new StrangerInfo(data);
     }
 
     async getGroupMemberInfoEx(group_id: number, user_id: number, no_cache: boolean = true) {
         let val = await this.getGroupMemberInfo(group_id, user_id, no_cache);
         let data = val.data;
-        if (data == null) { return; }
+        if (data == null) {
+            this.logger.error(`获取群 ${group_id} 成员 ${user_id} 信息失败!`);
+            return;
+        }
         // console.log(data);
         return new GroupMemberInfo(data);
     }
 
+    async sendMsgEx(type: "private" | "group" | 0 | 1, id: number, msg: Msg_Info | string, auto_escape: boolean = false) {
+        let res = await this.sendMsg(type, id, msg, auto_escape);
+        if (res.data == null) {
+            this.logger.error(`发送消息至 ${type == 0 ? "private" : type == 1 ? "group" : type}(${id}) 失败!`);
+            return;
+        }
+        return res.data.message_id as number;
+    }
+
+    /** 获取聊天消息(频道消息请使用OneBotDocking.guild.getMsgEx获取) */
     async getMsgInfoEx(msg_id: number) {
         let data = (await this.getMsg(msg_id)).data;
         // console.log(data);
-        if (!data) { return; }
-        return new MsgInfo(data);
+        if (!data) {
+            this.logger.error(`获取QQ消息信息失败!`);
+            return null;
+        }
+        return new MsgInfoEx(data);
     }
 
     //#region API
     // https://github.com/ishkong/go-cqhttp-docs/tree/main/docs/api
 
-    async sendMsg(type: "private" | "group" | 0 | 1, id: number, msg: string) {
+    async sendMsg(type: "private" | "group" | 0 | 1, id: number, msg: Msg_Info | string, auto_escape: boolean = false) {
         let Type: "private" | "group";
         if (typeof (type) == "number") {
             Type = ["private", "group"][type] as "private" | "group";
@@ -839,7 +956,8 @@ export class OneBotDocking {
         }
         let json: { [key: string]: any } = {
             "message_type": Type,
-            "message": msg
+            "message": msg,
+            "auto_escape": auto_escape
         };
         switch (Type) {
             case "private": json["user_id"] = id; break;
@@ -1219,28 +1337,191 @@ export class OneBotDocking {
     }
     //#endregion
 
-    //#region 频道API
+}
+
+
+class Guild {
+    private _Profile = { "nickname": "Unknown", "tiny_id": "-1", "avatar_url": "" }
+    constructor(protected _this: OneBotDocking) { }//这里的运行时间在主类初始化之前
+    private get log() { return this._this.logger; }
+    /** 在主类执行_Init的时候这玩意会自动执行 */
+    async _Init() {
+        this.log.info(`开始初始化频道信息...`);
+        if (!await this._loadSelfProfile()) {
+            this.log.warn(`初始化频道信息失败!无法使用频道系统!`);
+            return false;
+        }
+        // let list = await this.getGuildListEx();
+        // let mems = await this.getGuildMemberListEx(list[0].guild_id);
+        // let res = await this.getGuildMemberProfileEx(list[0].guild_id, mems?.members[0].user_id!);
+        // let msgId = await this._this.sendMsgEx(1, 980444970, "[CQ:at,qq=2847696890] 测试", false);
+        // let msg = await this._this.getMsgInfoEx(msgId);
+        // this.log.info(msg?.toMsgInfo().raw);
+        return true;
+    }
+    async _loadSelfProfile() {
+        this.log.info(`开始获取频道Bot资料...`);
+        let res = await this.getGuildServiceProfile();
+        if (res.data != null) {
+            this._Profile.nickname = res.data.nickname;
+            this._Profile.tiny_id = res.data.tiny_id;
+            this._Profile.avatar_url = res.data.avatar_url;
+            this.log.info(`获取频道Bot资料完成`);
+            return true;
+        }
+        this.log.error(`获取频道Bot资料失败`);
+        return false;
+    }
+
+
+    get OneBotDocking() { return this._this; }
+
+    /** 
+     * ```
+     * 没有加入任何讨论组返回空数组 
+     * 加强版(自动转换类型)
+     * ```
+     */
+    async getGuildListEx() {
+        let res = await this.getGuildList();
+        let arr: GuildInfo[] = [];
+        if (res.data == null) { return arr; }
+        let i = 0, l = res.data.length;
+        while (i < l) {
+            arr.push(new GuildInfo(res.data[i]));
+            i++;
+        }
+        return arr;
+    }
+
+    /** 
+     * ```
+     * 通过访客方式获取频道元数据
+     * go-cqhttp v1.0.1无法使用
+     * 加强版(自动转换类型)
+     * ```
+     */
+    async getGuildMetaByGuestEx(guild_id: string) {
+        let res = await this.getGuildMetaByGuest(guild_id);
+        if (res.data == null) {
+            this.log.error(`获取频道 ${guild_id} 元数据失败!`);
+            return;
+        }
+        return new GuildMetaInfo(res.data);
+    }
+
+    /**
+     * ```
+     * 获取子频道列表
+     * 加强版(自动转换类型)
+     * ```
+     */
+    async getGuildChannelListEx(guild_id: string, no_cache = false) {
+        let res = await this.getGuildChannelList(guild_id, no_cache);
+        if (res.data == null) {
+            this.log.error(`获取频道 ${guild_id} 子频道列表失败!`);
+            return;
+        }
+        let arr: ChannelInfo[] = [];
+        let l = res.data.length, i = 0;
+        while (i < l) {
+            arr.push(new ChannelInfo(res.data[i]));
+            i++;
+        }
+        return arr;
+    }
+
+    /**
+     * ```
+     * 获取频道成员列表
+     * 加强版(自动转换类型)
+     * ```
+     */
+    async getGuildMemberListEx(guild_id: string) {
+        let w = async (nextToken?: string) => {
+            let res = await this.getGuildMemberList(guild_id, nextToken);
+            if (res.data == null) {
+                this.log.error(`无法获取频道 ${guild_id} 成员列表!`);
+                return;
+            }
+            let { members, finished, next_token } = res.data;
+            let mems: GuildMemberInfo[] = [];
+            let l = members.length, i = 0;
+            while (i < l) {
+                mems.push(new GuildMemberInfo(members[i]));
+                i++;
+            }
+            if (finished) {
+                return {
+                    "finished": finished,
+                    "next": undefined,
+                    "token": undefined,
+                    "members": mems
+                }
+            } else {
+                return {
+                    "finished": finished,
+                    "next": async () => {
+                        return await w(next_token);
+                    },
+                    "token": next_token,
+                    "members": mems
+                }
+            }
+        }
+        return await w();
+    }
+
+    /**
+     * ```
+     * 单独获取频道成员信息
+     * 加强版(自动转换类型)
+     * ```
+     */
+    async getGuildMemberProfileEx(guild_id: string, tiny_id: string) {
+        let res = await this.getGuildMemberProfile(guild_id, tiny_id);
+        if (res.data == null) {
+            logger.error(`获取频道 ${guild_id} 成员 ${tiny_id} 信息失败!`);
+            return;
+        }
+        return new GuildMemberProfileInfo(res.data);
+    }
+
+
     /**
      * 获取频道系统内BOT的资料
      */
     async getGuildServiceProfile() {
-        return (await this._SendReqPro("get_guild_service_profile", {})) as {
-            "status": status, "retcode": number, "data": { "nickname": string, "tiny_id": string, "avatar_url": string }
-        };
+        return await this._this._SendReqPro("get_guild_service_profile", {});
     }
-
+    /**
+     * 获取已加入频道列表
+     */
     async getGuildList() {
-        return (await this._SendReqPro("get_guild_list", {})) as {
-            "status": status, "retcode": number, "data": {}
-        }
+        return await this._this._SendReqPro("get_guild_list", {});
     }
+    /** 通过访客方式获取频道元数据(暂不可用) */
+    async getGuildMetaByGuest(guild_id: string) {
+        return await this._this._SendReqPro("get_guild_meta_by_guest", { guild_id });
+    }
+    /** 获取子频道列表 */
+    async getGuildChannelList(guild_id: string, no_cache: boolean) {
+        return await this._this._SendReqPro("get_guild_channel_list", { guild_id, no_cache });
+    }
+    /** 获取频道成员列表 */
+    async getGuildMemberList(guild_id: string, next_token?: string | undefined) {
+        let obj: obj = { guild_id };
+        if (!!next_token) { obj["next_token"] = next_token; }
+        return await this._this._SendReqPro("get_guild_member_list", obj);
+    }
+    /** 单独获取频道成员信息 */
+    async getGuildMemberProfile(guild_id: string, user_id: string) {
+        return await this._this._SendReqPro("get_guild_member_profile", { guild_id, user_id });
+    }
+    async sendGuildChannelMsg(guild_id: string, channel_id: string) {
 
-
-    //#endregion
+    }
 }
-
-
-
 
 
 export {

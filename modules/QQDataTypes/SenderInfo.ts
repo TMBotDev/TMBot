@@ -29,4 +29,5 @@ export class SenderInfo {
     get sex() { return this.obj.sex; }
     //不准
     get age() { return this.obj.age; }
+    toString() { return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj)}`; }
 }

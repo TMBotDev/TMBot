@@ -37,4 +37,5 @@ export class StrangerInfo {
     get qid() { return this.obj.qid; }
     get level() { return this.obj.level; }
     get login_days() { return this.obj.login_days; }
+    toString() { return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj)}`; }
 }

@@ -18,4 +18,5 @@ export class FolderInfo {
     get creator() { return this.obj.creator; }
     get creator_name() { return this.obj.creator_name; }
     get total_file_count() { return this.obj.total_file_count; }
+    toString() { return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj)}`; }
 }

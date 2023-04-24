@@ -12,4 +12,5 @@ export class FileInfo {
     get name() { return this.obj.name; }
     get size() { return this.obj.size; }
     get busid() { return this.obj.busid; }
+    toString() { return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj)}`; }
 }
