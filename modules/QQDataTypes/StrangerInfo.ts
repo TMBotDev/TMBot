@@ -1,4 +1,5 @@
 import { OneBotDocking } from "../OneBotDocking";
+import { Msg_Info } from "./MsgInfo";
 
 /**
  * 陌生人信息
@@ -16,9 +17,10 @@ export class StrangerInfo {
     /**
      * 方便函数
      * 可能发送失败
+     * @returns 消息ID
      */
-    sendMsg(_this: OneBotDocking, msg: string) {
-        return _this.sendMsg("private", this.obj.user_id, msg);
+    sendMsg(_this: OneBotDocking, msg: string | Msg_Info[]) {
+        return _this.sendMsgEx("private", this.obj.user_id, msg);
     }
     toFriend(_this: OneBotDocking) {
         return _this.getFriendInfoSync(this.obj.user_id);

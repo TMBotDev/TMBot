@@ -1,5 +1,6 @@
 import { GroupMemberInfo, OneBotDocking, StrangerInfo } from "../OneBotDocking";
 import { GroupBaseInfo } from "./GroupBaseInfo";
+import { Msg_Info } from "./MsgInfo";
 import { SenderInfo } from "./SenderInfo";
 
 /**
@@ -38,10 +39,12 @@ export class GroupInfo {
     }
     /**
      * 方便函数,快捷发送群消息
+     * @returns 消息ID
      */
-    sendMsg(_this: OneBotDocking, msg: string) {
-        return _this.sendMsg("group", this.obj.group_id, msg);
+    sendMsg(_this: OneBotDocking, msg: string | Msg_Info[]) {
+        return _this.sendMsgEx("group", this.obj.group_id, msg);
     }
+    /** 建议在这里获取群人数等信息 */
     async getBaseData(_this: OneBotDocking) {
         let val = await _this.getGroupInfo(this.obj.group_id, false);
         let data = val.data;

@@ -1,4 +1,5 @@
 import { OneBotDocking } from "../OneBotDocking";
+import { Msg_Info } from "./MsgInfo";
 
 /**
  * 群成员信息
@@ -45,9 +46,10 @@ export class GroupMemberInfo {
      * 方便函数
      * 可能发送失败
      * ```
+     * @returns 消息ID
      */
-    sendMsg(_this: OneBotDocking, msg: string) {
-        return _this.sendMsg("private", this.obj.user_id, msg);
+    sendMsg(_this: OneBotDocking, msg: string | Msg_Info[]) {
+        return _this.sendMsgEx("private", this.obj.user_id, msg);
     }
     get group_id() { return this.obj.group_id; }
     get user_id() { return this.obj.user_id; }

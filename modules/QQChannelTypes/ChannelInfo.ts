@@ -1,3 +1,4 @@
+import { OneBotDocking } from "../OneBotDocking";
 import { SlowModeInfo } from "./SlowModeInfo";
 
 
@@ -51,4 +52,12 @@ export class ChannelInfo {
     get current_slow_mode() { return this.obj.current_slow_mode; }
     /** 频道内可用慢速模式类型列表 */
     get slow_modes() { return this.slowModes; }
+
+    getGuild(_this: OneBotDocking) {
+        // return _this.guild.
+    }
+
+    async sendMsg() {
+
+    }
 }

@@ -45,6 +45,18 @@ export type retcode = number;
  */
 export type status = "ok" | "failed" | "async";
 
+export type ret_data_struct = {
+    /** 异常解释,平时为空字段 */
+    "wording": string | undefined,
+    /** 异常类型,平时为空字段 */
+    "msg": string | undefined,
+    /** 异常解释(没有异常时为空字符串)(这个文档里面没写) */
+    "message": string,
+    "status": status,
+    "retcode": retcode,
+    "data": null | any
+}
+
 
 async function SafeGetGroupInfo(this: OneBotDocking, group_id: number) {
     let group = this.getGroupInfoSync(group_id);
@@ -115,6 +127,7 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
 
     switch (obj.message_type as "private" | "group" | "guild") {
         case "private": {
+            console.log(obj)
             let msg = new MsgInfo({ "message": obj.message, "message_id": obj.message_id, "raw_message": obj.raw_message });
             // this.MsgIDMap.set(msg.msg_id, msg);
             // console.log(JSON.stringify(obj.raw_message, null, 2));
@@ -126,7 +139,7 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
                 msg
             );
 
-            this.conf["MsgLog"] && this.logger.info(`私聊消息: ${sender.nickname} >> ${AutoReplaceCQCode(TruncateString(msg.originalContent, 100), this, async (name, _d) => name)}`);
+            this.conf["MsgLog"] && this.logger.info(`私聊消息: ${sender.nickname} >> ${await AutoReplaceCQCode(TruncateString(msg.originalContent, 100), this, async (name, _d) => name)}`);
             break;
         }
         case "group": {
@@ -546,16 +559,7 @@ export class OneBotDocking {
     private _LoginInfo = { "user_id": -1, "nickname": "Unknown" };
     // public MsgIDMap = new Map<number, MsgInfo>();
     private _RequestCallbacks: {
-        [key: string]: (obj: {
-            /** 异常解释,平时为空字段 */
-            "wording": string | undefined,
-            /** 异常类型,平时为空字段 */
-            "msg": string | undefined,
-            /** 异常解释(没有异常时为空字符串)(这个文档里面没写) */
-            "message": string,
-            "status": status, "retcode": retcode,
-            "data": null | any
-        }) => void
+        [key: string]: (obj: ret_data_struct) => void
     } = {};
     /**是否正在关闭*/
     private _isClosing: boolean = false;
@@ -565,7 +569,7 @@ export class OneBotDocking {
 
     private DelayLogger = { "error": (...msg: any[]) => { this.logger.error(...msg); } };
 
-    private _guild: undefined | Guild = new Guild(this);
+    private _guildSystem: undefined | GuildSystem = new GuildSystem(this);
 
     // public ShareData = new ShareData();
 
@@ -624,7 +628,7 @@ export class OneBotDocking {
     constructor(
         public Name: string,
         private wsc: WebsocketClient,
-        public conf: { [key: string]: any }
+        public conf: obj
     ) {
         this.logger = new Logger(Name, (Version.isDebug ? 5 : 4));
         this._Init();
@@ -648,8 +652,8 @@ export class OneBotDocking {
     /**
      * 频道相关
      */
-    get guild() {
-        return this._guild;
+    get guildSystem() {
+        return this._guildSystem;
     }
 
     get Client() { return this.wsc; }
@@ -657,23 +661,6 @@ export class OneBotDocking {
     get LoginInfo() { return { "user_id": this._LoginInfo.user_id, "nickname": this._LoginInfo.nickname }; }
     get Groups() { return this._Groups; }
     get Friends() { return this._Friends; }
-
-    SafeClose(code: number = 1000) {
-        this._isClosing = true;
-        let closeTime = Date.now();
-        let close = () => {
-            this.wsc.destroy(code);
-            clearInterval(sid);
-        };
-        let sid = setInterval(() => {
-            if (Object.keys(this._RequestCallbacks).length == 0) {
-                close();
-            } else if ((Date.now() - closeTime) >= 1000 * 10) {
-                this.logger.warn("等待服务端返回超时!");
-                close();
-            }
-        }, 100);
-    }
 
     _Init() {
         this._IsInitd = false;
@@ -691,7 +678,7 @@ export class OneBotDocking {
                 (await this._loadGroupsInfo())) {
                 this._events.onInitSuccess.fire("OneBotDockingProcess_Event_InitSuccess", null);
                 this.logger.info(`基础信息初始化成功!`);
-                if (!this._guild!._Init()) { this._guild = undefined; }
+                if (!this.conf["ChannelSystem"] || !this._guildSystem!._Init()) { this._guildSystem = undefined; }
                 this._IsInitd = true;
             } else {
                 this.logger.fatal(`基础信息初始化失败!`);
@@ -763,15 +750,38 @@ export class OneBotDocking {
                 null
             );
         });
-        this.events.onRawMessage.on((raw, ori) => {
-            return ori(true, raw);
-        });
+        // this.events.onRawMessage.on((raw, ori) => {
+        //     return ori(true, raw);
+        // });
     }
-    _SendRequest(type: string, params: { [key: string]: any }, func: (obj: { "status": status, "retcode": retcode, "data": null | any }) => void) {
-        if (this._isClosing) { return; }
+
+    SafeClose(code: number = 1000) {
+        this._isClosing = true;
+        let closeTime = Date.now();
+        let close = () => {
+            this.wsc.destroy(code);
+            clearInterval(sid);
+        };
+        let sid = setInterval(() => {
+            if (Object.keys(this._RequestCallbacks).length == 0) {
+                close();
+            } else if ((Date.now() - closeTime) >= 1000 * 10) {
+                this.logger.warn("等待服务端返回超时!");
+                close();
+            }
+        }, 100);
+    }
+
+    _SendRequest(type: string, params: { [key: string]: any }, func: (obj: ret_data_struct) => void) {
+        let oriFunc = func;
         let id = Math.random().toString(16).slice(2);
+        let content = JSON.stringify({
+            "action": type,
+            "params": params,
+            "echo": id
+        });
         let err = new Error("Error Stack");
-        this._RequestCallbacks[id] = (obj) => {
+        func = (obj) => {
             if (obj.msg != null) {
                 this.logger.error(`API [${type}] 调用错误回执: ${obj.msg}(${obj.wording})`);
                 if (obj.msg != "API_ERROR") {
@@ -787,17 +797,18 @@ ${err.stack}
                     this.logger.warn(`API异常!请检查 OneBot 状况!`);
                 }
             }
-            func(obj);
+            oriFunc(obj);
         };
-        let content = JSON.stringify({
-            "action": type,
-            "params": params,
-            "echo": id
-        });
+        if (this._isClosing || this.wsc.client.readyState != this.wsc.client.OPEN) {
+            let info = "Websocket连接未建立!无法发起请求!";
+            func({ "status": "failed", "retcode": -1, "wording": info, "msg": "API_ERROR", "message": info, "data": null });
+            return;
+        }
+        this._RequestCallbacks[id] = func;
         this.wsc.send(content);
     }
     _SendReqPro(type: string, params: { [key: string]: any }) {
-        let pro = new Promise<{ "status": status, "retcode": retcode, "data": null | any }>((outMsg, outErr) => {
+        let pro = new Promise<ret_data_struct>((outMsg, outErr) => {
             this._SendRequest(type, params, (obj) => {
                 outMsg(obj);
             });
@@ -924,7 +935,7 @@ ${err.stack}
         return new GroupMemberInfo(data);
     }
 
-    async sendMsgEx(type: "private" | "group" | 0 | 1, id: number, msg: Msg_Info | string, auto_escape: boolean = false) {
+    async sendMsgEx(type: "private" | "group" | 0 | 1, id: number, msg: Msg_Info[] | string, auto_escape: boolean = false) {
         let res = await this.sendMsg(type, id, msg, auto_escape);
         if (res.data == null) {
             this.logger.error(`发送消息至 ${type == 0 ? "private" : type == 1 ? "group" : type}(${id}) 失败!`);
@@ -947,7 +958,7 @@ ${err.stack}
     //#region API
     // https://github.com/ishkong/go-cqhttp-docs/tree/main/docs/api
 
-    async sendMsg(type: "private" | "group" | 0 | 1, id: number, msg: Msg_Info | string, auto_escape: boolean = false) {
+    async sendMsg(type: "private" | "group" | 0 | 1, id: number, msg: Msg_Info[] | string, auto_escape: boolean = false) {
         let Type: "private" | "group";
         if (typeof (type) == "number") {
             Type = ["private", "group"][type] as "private" | "group";
@@ -1340,14 +1351,19 @@ ${err.stack}
 }
 
 
-class Guild {
+export class GuildSystem {
     private _Profile = { "nickname": "Unknown", "tiny_id": "-1", "avatar_url": "" }
+    private _Guilds = new Map<string, GuildInfo>();
     constructor(protected _this: OneBotDocking) { }//这里的运行时间在主类初始化之前
     private get log() { return this._this.logger; }
     /** 在主类执行_Init的时候这玩意会自动执行 */
     async _Init() {
+        this.log.info(`§l§e----------------`);
         this.log.info(`开始初始化频道信息...`);
-        if (!await this._loadSelfProfile()) {
+        if (
+            !(await this._loadSelfProfile()) ||
+            !(await this._loadAllGuildInfo())
+        ) {
             this.log.warn(`初始化频道信息失败!无法使用频道系统!`);
             return false;
         }
@@ -1357,6 +1373,7 @@ class Guild {
         // let msgId = await this._this.sendMsgEx(1, 980444970, "[CQ:at,qq=2847696890] 测试", false);
         // let msg = await this._this.getMsgInfoEx(msgId);
         // this.log.info(msg?.toMsgInfo().raw);
+        this.log.info(`初始化频道信息完成!`);
         return true;
     }
     async _loadSelfProfile() {
@@ -1371,6 +1388,20 @@ class Guild {
         }
         this.log.error(`获取频道Bot资料失败`);
         return false;
+    }
+    async _loadAllGuildInfo() {
+        this._Guilds.clear();
+        let list = await this.getGuildListEx();
+        let l = list.length, i = 0;
+        while (i < l) {
+            let guild = list[i];
+            if (!(await guild._init(this))) {
+                return false;
+            }
+            this._Guilds.set(guild.guild_id, guild);
+            i++;
+        }
+        return true;
     }
 
 
@@ -1487,6 +1518,21 @@ class Guild {
         return new GuildMemberProfileInfo(res.data);
     }
 
+    /** 
+     * ```
+     * 发送频道消息
+     * 加强版(自动转换类型) 
+     * ```
+     */
+    async sendMsgEx(guild_id: string, channel_id: string, msg: Msg_Info[] | string) {
+        let res = await this.sendGuildChannelMsg(guild_id, channel_id, msg);
+        if (res.data == null) {
+            this.log.error(`发送频道 ${guild_id}(${channel_id}) 消息失败!`);
+            return;
+        }
+        return res.data.message_id as string;
+    }
+
 
     /**
      * 获取频道系统内BOT的资料
@@ -1518,8 +1564,9 @@ class Guild {
     async getGuildMemberProfile(guild_id: string, user_id: string) {
         return await this._this._SendReqPro("get_guild_member_profile", { guild_id, user_id });
     }
-    async sendGuildChannelMsg(guild_id: string, channel_id: string) {
-
+    /** 发送信息到子频道 */
+    async sendGuildChannelMsg(guild_id: string, channel_id: string, message: string | Msg_Info[]) {
+        return await this._this._SendReqPro("send_guild_channel_msg", { guild_id, channel_id, message });
     }
 }
 
