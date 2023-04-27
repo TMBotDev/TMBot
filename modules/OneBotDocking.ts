@@ -127,7 +127,7 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
 
     switch (obj.message_type as "private" | "group" | "guild") {
         case "private": {
-            console.log(obj)
+            // console.log(obj)
             let msg = new MsgInfo({ "message": obj.message, "message_id": obj.message_id, "raw_message": obj.raw_message });
             // this.MsgIDMap.set(msg.msg_id, msg);
             // console.log(JSON.stringify(obj.raw_message, null, 2));
@@ -958,7 +958,7 @@ ${err.stack}
     //#region API
     // https://github.com/ishkong/go-cqhttp-docs/tree/main/docs/api
 
-    async sendMsg(type: "private" | "group" | 0 | 1, id: number, msg: Msg_Info[] | string, auto_escape: boolean = false) {
+    sendMsg(type: "private" | "group" | 0 | 1, id: number, msg: Msg_Info[] | string, auto_escape: boolean = false) {
         let Type: "private" | "group";
         if (typeof (type) == "number") {
             Type = ["private", "group"][type] as "private" | "group";
@@ -974,69 +974,69 @@ ${err.stack}
             case "private": json["user_id"] = id; break;
             case "group": json["group_id"] = id; break;
         }
-        return await this._SendReqPro("send_msg", json);
+        return this._SendReqPro("send_msg", json);
     };
-    async deleteMsg(msg_id: number) {
-        return await this._SendReqPro("delete_msg", { "message_id": msg_id });
+    deleteMsg(msg_id: number) {
+        return this._SendReqPro("delete_msg", { "message_id": msg_id });
     }
-    async getMsg(msg_id: number) {
-        return await this._SendReqPro("get_msg", { "message_id": msg_id });
+    getMsg(msg_id: number) {
+        return this._SendReqPro("get_msg", { "message_id": msg_id });
     }
-    async getForwardMsgs(id: string) {
-        return await this._SendReqPro("get_forward_msg", { "message_id": id });
+    getForwardMsgs(id: string) {
+        return this._SendReqPro("get_forward_msg", { "message_id": id });
     }
     /**
      * @param user_id 
      * @param count Max 10
      * @deprecated 机器人框架未支持
      */
-    async sendLike(user_id: number, count: number) {
+    sendLike(user_id: number, count: number) {
         count = (count > 10 ? 10 : (count < 1 ? 1 : count));
-        return await this._SendReqPro("send_like", { "user_id": user_id, "times": count });
+        return this._SendReqPro("send_like", { "user_id": user_id, "times": count });
     }
-    async groupKick(group_id: number, user_id: number, reject_add_request = false) {
-        return await this._SendReqPro("set_group_kick", { "group_id": group_id, "user_id": user_id, "reject_add_request": reject_add_request });
+    groupKick(group_id: number, user_id: number, reject_add_request = false) {
+        return this._SendReqPro("set_group_kick", { "group_id": group_id, "user_id": user_id, "reject_add_request": reject_add_request });
     }
     /**
      * @param group_id 
      * @param user_id 
      * @param duration 秒,0代表取消
      */
-    async groupMute(group_id: number, user_id: number, duration: number = 60 * 30) {
-        return await this._SendReqPro("set_group_ban", { "group_id": group_id, "user_id": user_id, "duration": duration });
+    groupMute(group_id: number, user_id: number, duration: number = 60 * 30) {
+        return this._SendReqPro("set_group_ban", { "group_id": group_id, "user_id": user_id, "duration": duration });
     }
-    async groupMuteAnonymous(group_id: number, anonymous_flag: string, duration: number = 60 * 30) {
+    groupMuteAnonymous(group_id: number, anonymous_flag: string, duration: number = 60 * 30) {
         return this._SendReqPro("set_group_anonymous_ban", { "group_id": group_id, "anonymous_flag": anonymous_flag, "duration": duration });
     }
-    async setAllMute(group_id: number, isMute: boolean = true) {
-        return await this._SendReqPro("set_group_whole_ban", { "group_id": group_id, "enable": isMute });
+    setAllMute(group_id: number, isMute: boolean = true) {
+        return this._SendReqPro("set_group_whole_ban", { "group_id": group_id, "enable": isMute });
     }
-    async setGroupAdmin(group_id: number, user_id: number, enable: boolean = true) {
-        return await this._SendReqPro("set_group_admin", { "group_id": group_id, "user_id": user_id, "enable": enable });
+    setGroupAdmin(group_id: number, user_id: number, enable: boolean = true) {
+        return this._SendReqPro("set_group_admin", { "group_id": group_id, "user_id": user_id, "enable": enable });
     }
     /**
      * @deprecated 机器人框架未支持
      */
-    async setGroupAnonymous(group_id: number, enable: boolean = true) {
-        return await this._SendReqPro("set_group_anonymous", { group_id, enable });
+    setGroupAnonymous(group_id: number, enable: boolean = true) {
+        return this._SendReqPro("set_group_anonymous", { group_id, enable });
     }
     /**
      * @param group_id 
      * @param user_id 
      * @param card 群名片内容，不填或空字符串表示删除群名片
      */
-    async setGroupCard(group_id: number, user_id: number, card: string = "") {
-        return await this._SendReqPro("set_group_card", { group_id, user_id, card });
+    setGroupCard(group_id: number, user_id: number, card: string = "") {
+        return this._SendReqPro("set_group_card", { group_id, user_id, card });
     }
-    async setGroupName(group_id: number, group_name: string) {
-        return await this._SendReqPro("set_group_name", { group_id, group_name });
+    setGroupName(group_id: number, group_name: string) {
+        return this._SendReqPro("set_group_name", { group_id, group_name });
     }
     /**
      * @param group_id 
      * @param is_dismiss 是否解散，如果登录号是群主，则仅在此项为 true 时能够解散
      */
-    async leaveGroup(group_id: number, is_dismiss: boolean = false) {
-        return await this._SendReqPro("set_group_leave", { group_id, is_dismiss });
+    leaveGroup(group_id: number, is_dismiss: boolean = false) {
+        return this._SendReqPro("set_group_leave", { group_id, is_dismiss });
     }
     /**
      * @param group_id 
@@ -1044,18 +1044,18 @@ ${err.stack}
      * @param special_title 专属头衔，不填或空字符串表示删除专属头衔
      * @param duration 专属头衔有效期，单位秒，-1 表示永久，不过此项似乎没有效果，可能是只有某些特殊的时间长度有效，有待测试
      */
-    async setGroupSpecialTitle(group_id: number, user_id: number, special_title: string = "", duration: number = -1) {
-        return await this._SendReqPro("set_group_special_title", { group_id, user_id, special_title, duration });
+    setGroupSpecialTitle(group_id: number, user_id: number, special_title: string = "", duration: number = -1) {
+        return this._SendReqPro("set_group_special_title", { group_id, user_id, special_title, duration });
     }
-    async sendGroupSign(group_id: number) {
-        return await this._SendReqPro("send_group_sign", { group_id });
+    sendGroupSign(group_id: number) {
+        return this._SendReqPro("send_group_sign", { group_id });
     }
     /**
      * @param discuss_id 
      * @deprecated QQ已无群组
      */
-    async leaveDiscuss(discuss_id: number) {
-        return await this._SendReqPro("set_discuss_leave ", { discuss_id });
+    leaveDiscuss(discuss_id: number) {
+        return this._SendReqPro("set_discuss_leave ", { discuss_id });
     }
     /**
      * @param flag 
@@ -1063,8 +1063,8 @@ ${err.stack}
      * @param remark 添加后的好友备注（仅在同意时有效）
      * @returns 
      */
-    async processFriendAddRequest(flag: string, approve: boolean = true, remark: string = "") {
-        return await this._SendReqPro("set_friend_add_request", { flag, approve, remark });
+    processFriendAddRequest(flag: string, approve: boolean = true, remark: string = "") {
+        return this._SendReqPro("set_friend_add_request", { flag, approve, remark });
     }
     /**
      * @param flag 
@@ -1073,17 +1073,17 @@ ${err.stack}
      * @param reason 拒绝理由（仅在拒绝时有效）
      * @returns 
      */
-    async processGroupMemberAddRequest(flag: string, sub_type: "add" | "invite", approve: boolean = true, reason: undefined | string = undefined) {
-        return await this._SendReqPro("set_group_add_request", { flag, sub_type, approve, reason });
+    processGroupMemberAddRequest(flag: string, sub_type: "add" | "invite", approve: boolean = true, reason: undefined | string = undefined) {
+        return this._SendReqPro("set_group_add_request", { flag, sub_type, approve, reason });
     }
-    async getLoginInfo() {
-        return await this._SendReqPro("get_login_info", {});
+    getLoginInfo() {
+        return this._SendReqPro("get_login_info", {});
     }
     /**
      * 注意 该API只有企点协议可用 
      */
-    async getQiDianAccountInfo() {
-        return await this._SendReqPro("qidian_get_account_info", {});
+    getQiDianAccountInfo() {
+        return this._SendReqPro("qidian_get_account_info", {});
     }
     /**
      * @param nickname 名称
@@ -1092,111 +1092,111 @@ ${err.stack}
      * @param college 学校
      * @param personal_note 个人说明
      */
-    async setQQProfile(nickname: string, company: string, email: string, college: string, personal_note: string) {
-        return await this._SendReqPro("set_qq_profile", {});
+    setQQProfile(nickname: string, company: string, email: string, college: string, personal_note: string) {
+        return this._SendReqPro("set_qq_profile", {});
     }
-    async getStrangerInfo(user_id: number, no_cache: boolean = false) {
-        return await this._SendReqPro("get_stranger_info", { user_id, no_cache });
+    getStrangerInfo(user_id: number, no_cache: boolean = false) {
+        return this._SendReqPro("get_stranger_info", { user_id, no_cache });
     }
-    async getFriendList() {
-        return await this._SendReqPro("get_friend_list", {});
+    getFriendList() {
+        return this._SendReqPro("get_friend_list", {});
     }
-    async getUnidirectionalFriendList() {
-        return await this._SendReqPro("get_unidirectional_friend_list", {});
+    getUnidirectionalFriendList() {
+        return this._SendReqPro("get_unidirectional_friend_list", {});
     }
-    async getGroupList() {
-        return await this._SendReqPro("get_group_list", {});
+    getGroupList() {
+        return this._SendReqPro("get_group_list", {});
     }
     /**
      * @param group_id 
      * @param no_cache 是否不使用缓存（使用缓存可能更新不及时，但响应更快）
      * @returns 
      */
-    async getGroupInfo(group_id: number, no_cache: boolean = false) {
-        return await this._SendReqPro("get_group_info", { group_id, no_cache });
+    getGroupInfo(group_id: number, no_cache: boolean = false) {
+        return this._SendReqPro("get_group_info", { group_id, no_cache });
     }
     /**
      * @param group_id 
      * @param user_id 
      * @param no_cache 是否不使用缓存（使用缓存可能更新不及时，但响应更快）
      */
-    async getGroupMemberInfo(group_id: number, user_id: number, no_cache: boolean = false) {
-        return await this._SendReqPro("get_group_member_info", { group_id, user_id, no_cache });
+    getGroupMemberInfo(group_id: number, user_id: number, no_cache: boolean = false) {
+        return this._SendReqPro("get_group_member_info", { group_id, user_id, no_cache });
     }
-    async getGroupMemberList(group_id: number) {
-        return await this._SendReqPro("get_group_member_list", { group_id });
+    getGroupMemberList(group_id: number) {
+        return this._SendReqPro("get_group_member_list", { group_id });
     }
-    async getGroupHonorInfo(group_id: number, type: "all" | "talkative " | "performer" | "legend" | "strong_newbie" | "emotion") {
-        return await this._SendReqPro("get_group_honor_info", { group_id, type });
-    }
-    /**
-     * @deprecated 机器人框架未支持
-     */
-    async getCookies() {
-        return await this._SendReqPro("get_cookies", {});
+    getGroupHonorInfo(group_id: number, type: "all" | "talkative " | "performer" | "legend" | "strong_newbie" | "emotion") {
+        return this._SendReqPro("get_group_honor_info", { group_id, type });
     }
     /**
      * @deprecated 机器人框架未支持
      */
-    async getCsrfToken() {
-        return await this._SendReqPro("get_csrf_token", {});
-    }
-    /**
-    * @deprecated 机器人框架未支持
-    */
-    async getCredentials() {
-        return await this._SendReqPro("get_credentials", {});
-    }
-    /**
-    * @deprecated 机器人框架未支持
-    */
-    async getRecord(file: string, out_format: "mp3" | "amr" | "wma" | "m4a" | "spx" | "ogg" | "wav" | "flac", full_path: boolean = false) {
-        return await this._SendReqPro("get_record", { file, out_format, full_path });
-    }
-    async getImage(file: string) {
-        return await this._SendReqPro("get_image", { file });
-    }
-    async canSendImage() {
-        return await this._SendReqPro("can_send_image", {});
-    }
-    async canSendRecord() {
-        return await this._SendReqPro("can_send_record", {});
-    }
-    async getStatus() {
-        return await this._SendReqPro("get_status", {});
-    }
-    async getVersionInfo() {
-        return await this._SendReqPro("get_version_info", {});
-    }
-    async setRestart(delay: number = 0) {
-        return await this._SendReqPro("set_restart", { delay });
+    getCookies() {
+        return this._SendReqPro("get_cookies", {});
     }
     /**
      * @deprecated 机器人框架未支持
      */
-    async setRestartPlugin(delay: number = 0) {
-        return await this._SendReqPro("set_restart_plugin", { delay });
+    getCsrfToken() {
+        return this._SendReqPro("get_csrf_token", {});
     }
     /**
     * @deprecated 机器人框架未支持
     */
-    async cleanDataDir(data_dir: string) {
-        return await this._SendReqPro("clean_data_dir", { data_dir });
+    getCredentials() {
+        return this._SendReqPro("get_credentials", {});
     }
     /**
     * @deprecated 机器人框架未支持
     */
-    async cleanCache() {
-        return await this._SendReqPro("clean_cache", {});
+    getRecord(file: string, out_format: "mp3" | "amr" | "wma" | "m4a" | "spx" | "ogg" | "wav" | "flac", full_path: boolean = false) {
+        return this._SendReqPro("get_record", { file, out_format, full_path });
+    }
+    getImage(file: string) {
+        return this._SendReqPro("get_image", { file });
+    }
+    canSendImage() {
+        return this._SendReqPro("can_send_image", {});
+    }
+    canSendRecord() {
+        return this._SendReqPro("can_send_record", {});
+    }
+    getStatus() {
+        return this._SendReqPro("get_status", {});
+    }
+    getVersionInfo() {
+        return this._SendReqPro("get_version_info", {});
+    }
+    setRestart(delay: number = 0) {
+        return this._SendReqPro("set_restart", { delay });
+    }
+    /**
+     * @deprecated 机器人框架未支持
+     */
+    setRestartPlugin(delay: number = 0) {
+        return this._SendReqPro("set_restart_plugin", { delay });
     }
     /**
     * @deprecated 机器人框架未支持
     */
-    async cleanPluginLog() {
-        return await this._SendReqPro("clean_plugin_log", {});
+    cleanDataDir(data_dir: string) {
+        return this._SendReqPro("clean_data_dir", { data_dir });
     }
-    async setGroupPortrait(group_id: number, file: string, cache: boolean = true) {
-        return await this._SendReqPro("set_group_portrait", { group_id, file, "cache": +cache });
+    /**
+    * @deprecated 机器人框架未支持
+    */
+    cleanCache() {
+        return this._SendReqPro("clean_cache", {});
+    }
+    /**
+    * @deprecated 机器人框架未支持
+    */
+    cleanPluginLog() {
+        return this._SendReqPro("clean_plugin_log", {});
+    }
+    setGroupPortrait(group_id: number, file: string, cache: boolean = true) {
+        return this._SendReqPro("set_group_portrait", { group_id, file, "cache": +cache });
     }
     /**
      * @note ```
@@ -1233,16 +1233,16 @@ ${err.stack}
      * -------------------------------------------------
      * ```
      */
-    async getGroupSystemMsg() {
-        return await this._SendReqPro("get_group_system_msg", {});
+    getGroupSystemMsg() {
+        return this._SendReqPro("get_group_system_msg", {});
     }
     /**
      * @param user_id 
      * @param file 本地文件目录
      * @param name 
      */
-    async uploadPrivateFile(user_id: number, file: string, name: string) {
-        return await this._SendReqPro("upload_private_file", { user_id, file, name });
+    uploadPrivateFile(user_id: number, file: string, name: string) {
+        return this._SendReqPro("upload_private_file", { user_id, file, name });
     }
     /**
      * @param group_id 
@@ -1250,11 +1250,11 @@ ${err.stack}
      * @param name 
      * @param folder 父目录id
      */
-    async uploadGroupFile(group_id: number, file: string, name: string, folder: string | undefined) {
-        return await this._SendReqPro("upload_group_file", { group_id, file, folder });
+    uploadGroupFile(group_id: number, file: string, name: string, folder: string | undefined) {
+        return this._SendReqPro("upload_group_file", { group_id, file, folder });
     }
-    async getGroupFileSystemInfo(group_id: number) {
-        return await this._SendReqPro("get_group_file_system_info", { group_id });
+    getGroupFileSystemInfo(group_id: number) {
+        return this._SendReqPro("get_group_file_system_info", { group_id });
     }
     /**
      * @note ```
@@ -1264,8 +1264,8 @@ ${err.stack}
      * folders	Folder[]	文件夹列表
      * ```
      */
-    async getGroupRootFiles(group_id: number) {
-        return await this._SendReqPro("get_group_root_files", { group_id });
+    getGroupRootFiles(group_id: number) {
+        return this._SendReqPro("get_group_root_files", { group_id });
     }
     /**
      * @note ```
@@ -1276,8 +1276,8 @@ ${err.stack}
      * folders	FolderInfo[]	文件夹列表
      * ```
      */
-    async getGroupFilesByFolder(group_id: number, folder_id: string) {
-        return await this._SendReqPro("get_group_files_by_folder", { group_id, folder_id });
+    getGroupFilesByFolder(group_id: number, folder_id: string) {
+        return this._SendReqPro("get_group_files_by_folder", { group_id, folder_id });
     }
     /**
      * @param group_id 
@@ -1285,35 +1285,35 @@ ${err.stack}
      * @param parent_id 仅能为 /
      * @returns 
      */
-    async createGroupFileFolder(group_id: number, name: number, parent_id: string = "/") {
-        return await this._SendReqPro("create_group_file_folder", { group_id, name, parent_id });
+    createGroupFileFolder(group_id: number, name: number, parent_id: string = "/") {
+        return this._SendReqPro("create_group_file_folder", { group_id, name, parent_id });
     }
-    async deleteGroupFolder(group_id: number, folder_id: string) {
-        return await this._SendReqPro("delete_group_folder", { group_id, folder_id });
+    deleteGroupFolder(group_id: number, folder_id: string) {
+        return this._SendReqPro("delete_group_folder", { group_id, folder_id });
     }
-    async deleteGroupFile(group_id: number, file_id: string, busid: string) {
-        return await this._SendReqPro("delete_group_file", { group_id, file_id, busid });
+    deleteGroupFile(group_id: number, file_id: string, busid: string) {
+        return this._SendReqPro("delete_group_file", { group_id, file_id, busid });
     }
-    async getGroupFileUrl(group_id: number, file_id: string, busid: string) {
-        return await this._SendReqPro("get_group_file_url", { group_id, file_id, busid });
+    getGroupFileUrl(group_id: number, file_id: string, busid: string) {
+        return this._SendReqPro("get_group_file_url", { group_id, file_id, busid });
     }
-    async getGroupAtAllRemain(group_id: number) {
-        return await this._SendReqPro("get_group_at_all_remain", { group_id });
+    getGroupAtAllRemain(group_id: number) {
+        return this._SendReqPro("get_group_at_all_remain", { group_id });
     }
-    async downloadFile(url: string, thread_count: number, headers: string | string[]) {
-        return await this._SendReqPro("download_file", { url, thread_count, headers });
+    downloadFile(url: string, thread_count: number, headers: string | string[]) {
+        return this._SendReqPro("download_file", { url, thread_count, headers });
     }
-    async getOnlineClients(no_cache: boolean = false) {
-        return await this._SendReqPro("get_online_clients", { no_cache });
+    getOnlineClients(no_cache: boolean = false) {
+        return this._SendReqPro("get_online_clients", { no_cache });
     }
-    async getGroupMsgHistory(group_id: number) {
-        return await this._SendReqPro("get_group_msg_history", { group_id });
+    getGroupMsgHistory(group_id: number) {
+        return this._SendReqPro("get_group_msg_history", { group_id });
     }
-    async setEssenceMsg(message_id: number) {
-        return await this._SendReqPro("set-essence_msg", { message_id });
+    setEssenceMsg(message_id: number) {
+        return this._SendReqPro("set-essence_msg", { message_id });
     }
-    async deleteEssenceMsg(message_id: number) {
-        return await this._SendReqPro("delete_essence_msg", { message_id });
+    deleteEssenceMsg(message_id: number) {
+        return this._SendReqPro("delete_essence_msg", { message_id });
     }
     /**
      * @note ```
@@ -1329,8 +1329,8 @@ ${err.stack}
      * }[]
      * ```
      */
-    async getEssenceMsgList(group_id: number) {
-        return await this._SendReqPro("get_essence_msg_list", { group_id });
+    getEssenceMsgList(group_id: number) {
+        return this._SendReqPro("get_essence_msg_list", { group_id });
     }
     /**
      * @note ```
@@ -1340,11 +1340,11 @@ ${err.stack}
      * }
      * ```
      */
-    async checkUrlSafely(url: string) {
-        return await this._SendReqPro("check_url_safely", { url });
+    checkUrlSafely(url: string) {
+        return this._SendReqPro("check_url_safely", { url });
     }
-    async deleteUnidirectionalFriend(user_id: number) {
-        return await this._SendReqPro("delete_unidirectional_friend", { user_id });
+    deleteUnidirectionalFriend(user_id: number) {
+        return this._SendReqPro("delete_unidirectional_friend", { user_id });
     }
     //#endregion
 
@@ -1537,36 +1537,36 @@ export class GuildSystem {
     /**
      * 获取频道系统内BOT的资料
      */
-    async getGuildServiceProfile() {
-        return await this._this._SendReqPro("get_guild_service_profile", {});
+    getGuildServiceProfile() {
+        return this._this._SendReqPro("get_guild_service_profile", {});
     }
     /**
      * 获取已加入频道列表
      */
-    async getGuildList() {
-        return await this._this._SendReqPro("get_guild_list", {});
+    getGuildList() {
+        return this._this._SendReqPro("get_guild_list", {});
     }
     /** 通过访客方式获取频道元数据(暂不可用) */
-    async getGuildMetaByGuest(guild_id: string) {
-        return await this._this._SendReqPro("get_guild_meta_by_guest", { guild_id });
+    getGuildMetaByGuest(guild_id: string) {
+        return this._this._SendReqPro("get_guild_meta_by_guest", { guild_id });
     }
     /** 获取子频道列表 */
-    async getGuildChannelList(guild_id: string, no_cache: boolean) {
-        return await this._this._SendReqPro("get_guild_channel_list", { guild_id, no_cache });
+    getGuildChannelList(guild_id: string, no_cache: boolean) {
+        return this._this._SendReqPro("get_guild_channel_list", { guild_id, no_cache });
     }
     /** 获取频道成员列表 */
-    async getGuildMemberList(guild_id: string, next_token?: string | undefined) {
+    getGuildMemberList(guild_id: string, next_token?: string | undefined) {
         let obj: obj = { guild_id };
         if (!!next_token) { obj["next_token"] = next_token; }
-        return await this._this._SendReqPro("get_guild_member_list", obj);
+        return this._this._SendReqPro("get_guild_member_list", obj);
     }
     /** 单独获取频道成员信息 */
-    async getGuildMemberProfile(guild_id: string, user_id: string) {
-        return await this._this._SendReqPro("get_guild_member_profile", { guild_id, user_id });
+    getGuildMemberProfile(guild_id: string, user_id: string) {
+        return this._this._SendReqPro("get_guild_member_profile", { guild_id, user_id });
     }
     /** 发送信息到子频道 */
-    async sendGuildChannelMsg(guild_id: string, channel_id: string, message: string | Msg_Info[]) {
-        return await this._this._SendReqPro("send_guild_channel_msg", { guild_id, channel_id, message });
+    sendGuildChannelMsg(guild_id: string, channel_id: string, message: string | Msg_Info[]) {
+        return this._this._SendReqPro("send_guild_channel_msg", { guild_id, channel_id, message });
     }
 }
 
