@@ -57,11 +57,12 @@ export class GroupInfo {
     async refreshMemberInfo(_this: OneBotDocking, user_id: number) {
         let time = Date.now();
         let mem = this._Members.get(user_id);
-        if ((time - (this._RefreshMap.get(user_id) || time)) < 500) {
+        if ((time - (this._RefreshMap.get(user_id) || time)) < 500 && mem != null) {
             return mem;
         }
 
         let val = await _this.getGroupMemberInfoEx(+this.obj.group_id, +user_id, true);
+        console.log(val);
         if (!val) {
             _this.logger.error(`[${this.obj.group_name}(${this.obj.group_id})] 刷新成员 ${mem == null ? user_id : `${mem.card || mem.nickname}(${mem.user_id})`} 信息失败!`);
             return mem;
@@ -79,7 +80,6 @@ export class GroupInfo {
             case "member":
                 this._Admins.delete(val.user_id);
                 this._Members.set(val.user_id, val);
-
                 break;
         }
         return val;
