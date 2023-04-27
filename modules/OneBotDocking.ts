@@ -153,7 +153,7 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
             if (obj.sub_type == "anonymous") {
                 member = new AnonymousInfo(obj.group_id, obj.anonymous);
             } else {
-                console.log(sender)
+                // console.log(sender)
                 member = (await group.refreshMemberInfo(this, sender.user_id))!;
                 // member = group.senderGetMember(sender)!;
             }
