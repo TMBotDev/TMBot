@@ -1,4 +1,5 @@
 import { BotDockingMgr } from "./modules/BotDockingMgr";
+import { ErrorPrint } from "./modules/ErrorPrint";
 import { PluginPackage } from "./modules/PluginLoader";
 import { JsonConfigFileClass } from "./tools/data";
 import { Logger } from "./tools/logger";
@@ -15,7 +16,9 @@ let Logo = String.raw`
 let logger = new Logger("TMBotMain");
 
 export let Version = {
-    "version": [1, 0, 6],
+
+    "version": [1, 0, 7],
+
     "isBeta": false,
     "isDebug": false
 };
@@ -27,7 +30,8 @@ let TMBotConfig = new JsonConfigFileClass("./config/config.json", JSON.stringify
         "ReConnectTime": 4,
         "MsgLog": true,
         "NoticeLog": true,
-        "LogFile": "RoBotLog-{Y}-{M}-{D}.log"
+        "LogFile": "RoBotLog-{Y}-{M}-{D}.log",
+        "ChannelSystem": false
     }
 }, null, 2));
 
@@ -35,6 +39,11 @@ let TMBotConfig = new JsonConfigFileClass("./config/config.json", JSON.stringify
 process.on("uncaughtException", (err, _ori) => {
     logger.error(`程序出现未捕获的异常:`);
     logger.error(`Stack: ${err.stack}`);
+    ErrorPrint("TMBot_Unknown_Error", "Unknown", `调用堆栈:
+\`\`\`txt
+${err.stack}
+\`\`\`
+`, logger);
 });
 
 // process.on("uncaughtExceptionMonitor", (err, _ori) => {
@@ -72,6 +81,8 @@ async function load() {
                 throw new Error(`NoticeLog(通知日志开关)参数必须为布尔!`);
             } else if (typeof (obj["LogFile"]) != "string" && obj["LogFile"] != null) {
                 throw new Error(`LogFile(日志文件)参数必须为字符串或者null!`);
+            } else if (typeof (obj["ChannelSystem"]) != "boolean") {
+                throw new Error(`ChannelSystem(频道系统)参数必须为布尔!`);
             }
             await BotDockingMgr._NewBot(name, ws, reConnCount, reConnTime, obj);
         } catch (e) {
