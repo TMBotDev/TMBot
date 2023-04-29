@@ -348,7 +348,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             break;
         }
         case "notify": {
-            let group = await SafeGetGroupInfo.call(this, obj.group_id);
+            let group = !!obj.group_id ? await SafeGetGroupInfo.call(this, obj.group_id) : undefined;
             switch (obj.sub_type as "poke" | "lucky_king" | "honor") {
                 case "poke": {
                     if (group) {
@@ -956,6 +956,18 @@ ${err.stack}
         return new MsgInfoEx(data);
     }
 
+    /**
+     * 删除好友加强版
+     * @returns -1为没有此好友0为删除失败1表示成功
+     */
+    async deleteFriendEx(user_id: number) {
+        if (!this._Friends.has(user_id)) { return -1; }
+        await this.deleteFriend(user_id);//由于没有返回数据,所以只等待执行完毕
+        await new Promise((r) => { setTimeout(r, 2000); });//sleep 2s
+        await this.RefreshAllFriendInfo();
+        return +!this._Friends.has(user_id);
+    }
+
     //#region API
     // https://github.com/ishkong/go-cqhttp-docs/tree/main/docs/api
 
@@ -1101,6 +1113,10 @@ ${err.stack}
     }
     getFriendList() {
         return this._SendReqPro("get_friend_list", {});
+    }
+    /** 删除好友 */
+    deleteFriend(user_id: number) {
+        return this._SendReqPro("delete_friend", { user_id });
     }
     getUnidirectionalFriendList() {
         return this._SendReqPro("get_unidirectional_friend_list", {});
