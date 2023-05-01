@@ -5,15 +5,80 @@ export type Msg_Info = {
     "data": { [key: string]: string }
 };
 
+function AutoEscape(s: string) {
+    return s.replace(/&amp\;/g, "&")
+        .replace(/&#91\;/g, "[")
+        .replace(/&#93\;/g, "]")
+        .replace(/&#44\;/g, ",");
+}
+
+
+function CQContentToDataObj(content: string[]) {
+    let obj: { [key: string]: string } = {};
+    let l = content.length, i = 0;
+    while (i < l) {
+        let line = content[i];
+        let [k, v] = line.split("=");
+        obj[k] = v;
+        i++;
+    }
+    return obj;
+}
+
+/**
+ * CQCode字符串转CQCode数组
+ */
+function CQCodeStrMsgToMsgInfoArrMsg(msg: string) {
+    let arr: Msg_Info[] = [];
+    /**
+     * [CQ:at,qq=123]asc [CQ:at,qq=ccccc]
+     * ["CQ:at,qq=123]asc ", "CQ:at,qq=ccccc]"]
+     */
+    let e = msg.split("[");
+    if (e[0] == "") {//解决出现空字符串问题
+        e.shift();
+    }
+    let l = e.length, i = 0;
+    while (i < l) {
+        let content = e[i];
+        if (content.indexOf("CQ:") == 0) {
+            let end = content.indexOf("]");
+            if (end == -1) {//ori
+                arr.push({ "type": "text", "data": { "text": AutoEscape(content) } });
+            } else {
+                let endStr = AutoEscape(content.substring(end + 1));//末尾字符串
+                let CQCodeContent = content.substring(0, end).split(",");
+                let CQCodeName = CQCodeContent.shift()?.replace("CQ:", "");
+                let CQCodeData = CQContentToDataObj(CQCodeContent);
+                arr.push({ "type": CQCodeName!, "data": CQCodeData });
+                if (!!endStr) {
+                    arr.push({ "type": "text", "data": { "text": AutoEscape(endStr) } });
+                }
+            }
+        } else {
+            arr.push({ "type": "text", "data": { "text": AutoEscape(content) } });
+        }
+        i++;
+    }
+    return arr;
+}
+
 /**
  * 消息信息
  */
 export class MsgInfo {
+    private _msgInfoArray: Msg_Info[];
     constructor(private obj: {
         "message": string | Msg_Info[],
         "raw_message": string,
         "message_id": number
-    }) { }
+    }) {
+        if (typeof (this.obj.message) == "string") {
+            this._msgInfoArray = CQCodeStrMsgToMsgInfoArrMsg(this.obj.message);
+        } else {
+            this._msgInfoArray = obj.message as Msg_Info[];
+        }
+    }
     /**
      * ```
      * 撤回消息
@@ -25,14 +90,17 @@ export class MsgInfo {
     }
     /** 转义过特殊字符的 */
     get originalContent() {
-        return this.obj.raw_message.replace(/&amp\;/g, "&")
-            .replace(/&#91\;/g, "[")
-            .replace(/&#93\;/g, "]")
-            .replace(/&#44\;/g, ",");
+        return AutoEscape(this.obj.raw_message);
     }
     get msg() { return this.obj.message; }
     get raw() { return this.obj.raw_message; }
     get msg_id() { return this.obj.message_id; }
+    /**
+     * 消息信息数组
+     */
+    get msgInfoArray() {
+        return this._msgInfoArray;
+    }
     toString() { return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj)}`; }
 }
 
@@ -55,7 +123,10 @@ function Msg_InfoToStringMsg(msg: Msg_Info[]) {
     while (i < l) {
         let mi = msg[i];
         if (mi.type == "text") {
-            str += mi.data.text;
+            str += mi.data.text.replace(/&/g, "&amp;")
+                .replace(/\[/g, "&#91;")
+                .replace(/\]/g, "&#93;")
+                .replace(/,/g, "&#44;");
         } else {
             let part = `[CQ:${mi.type},${ObjToCQCodeData(mi.data)}]`;
             str += part;
@@ -105,9 +176,9 @@ export class MsgInfoEx {
 }
 
 /**
- * ``` text
- * 消息构建器
- * 数据类型参考 https://docs.go-cqhttp.org/cqcode/#%E5%9B%BE%E7%89%87
+ * ``` markdown
+ * ## 消息构建器
+ * 数据类型参考<https://docs.go-cqhttp.org/cqcode/#%E5%9B%BE%E7%89%87>
  * ```
  */
 export class MsgInfoBuilder {
@@ -117,10 +188,11 @@ export class MsgInfoBuilder {
     /** 添加文本(自动转义特殊字符) */
     addText(text: string) {
         if (this.only) { return; }
-        text = text.replace(/&/g, "&amp;")
-            .replace(/\[/g, "&#91;")
-            .replace(/\]/g, "&#93;")
-            .replace(/,/g, "&#44;");
+        //这个不用转义
+        // text = text.replace(/&/g, "&amp;")
+        //     .replace(/\[/g, "&#91;")
+        //     .replace(/\]/g, "&#93;")
+        //     .replace(/,/g, "&#44;");
         this.context.push({
             "type": "text",
             "data": { text }
@@ -149,8 +221,14 @@ export class MsgInfoBuilder {
      * ```
      * @param file ``` text
      * 可以为网址或者绝对路径(使用格式:file:///C:\\a.mp3)
+     * * 这里的绝对路径指的是ws服务(机器人登录)运行的路径
      * 也可以使用base64(格式:base64://iVBORw0KGgoAAAANSUhEUgAAABQAA...)
+     * * 填写上述数据后可忽略后边参数,如果此参数为名称时请填写后边参数
      * ```
+     * @param url 语音网址
+     * @param cache 是否使用缓存
+     * @param proxy 是否使用代理下载
+     * @param timeout 下载超时时间
      */
     setRecord(
         file: string,
@@ -160,11 +238,11 @@ export class MsgInfoBuilder {
         timeout: string | undefined = undefined
     ) {
         if (this.only) { return; }
+        this.reset();
         this.only = true;
         let data: { [k: string]: string } = { file, cache, proxy };
         if (url != null) { data.url = url; }
         if (timeout != null) { data.timeout = timeout; }
-        this.reset();
         this.context.push({
             "type": "record",
             "data": data
@@ -172,20 +250,120 @@ export class MsgInfoBuilder {
         return this;
     }
 
-    setVideo() {
-
-    }
-
-    /** 添加at */
-    addAt(qq: string): this {
+    /**
+     * ```
+     * 设置为视频消息
+     * 因为视频里面不能包含其他内容,所以设置后将清除已设置内容并且无法进行后续任何添加操作
+     * * 添加唯一属性
+     * ```
+     * @param file ``` markdown
+     * 可以为网址或者绝对路径(使用格式:file:///C:\\a.mp3)
+     * * 这里的绝对路径指的是ws服务(机器人登录)运行的路径
+     * 这里base64我不知道能不能用哈,自己试(doge)
+     * ```
+     * @param cover 视频封面, 支持http, file和base64发送, 格式必须为jpg
+     * @param c 通过网络下载视频时的线程数, 默认单线程. (在资源不支持并发时会自动处理)
+     */
+    setVideo(file: string, cover: string, c: number = 2) {
+        if (this.only) { return; }
+        this.reset();
+        this.only = true;
         this.context.push({
-            "type": "at",
-            "data": { qq }
+            "type": "video",
+            "data": { file, cover, "c": c + "" }
         });
         return this;
     }
 
+    /** 
+     * 添加at
+     * @param qq QQ号,all表示全体成员
+     * @param name 当在群中找不到此QQ号的名称时才会生效
+     */
+    addAt(qq: string | "all", name: string = "") {
+        if (this.only) { return; }
+        this.context.push({
+            "type": "at",
+            "data": { qq, name }
+        });
+        return this;
+    }
 
+    /**
+     * ```
+     * 设置猜拳魔法表情
+     * 因为猜拳里面不能包含其他内容,所以设置后将清除已设置内容并且无法进行后续任何添加操作
+     * * 添加唯一属性
+     * ```
+     * @deprecated 该 CQcode 暂未被 go-cqhttp 支持, 您可以提交 pr 以使该 CQcode 被支持 提交 pr
+     */
+    setRps() {
+        if (this.only) { return; }
+        this.reset();
+        this.only = true;
+        this.context.push({
+            "type": "rps",
+            "data": {}
+        });
+        return this;
+    }
+
+    /**
+     * ```
+     * 设置掷骰子魔法表情
+     * 因为掷骰子里面不能包含其他内容,所以设置后将清除已设置内容并且无法进行后续任何添加操作
+     * * 添加唯一属性
+     * ```
+     * @deprecated 该 CQcode 暂未被 go-cqhttp 支持, 您可以提交 pr 以使该 CQcode 被支持 提交 pr
+     */
+    setDice() {
+        if (this.only) { return; }
+        this.reset();
+        this.only = true;
+        this.context.push({
+            "type": "dice",
+            "data": {}
+        });
+        return this;
+    }
+
+    /**
+     * ```
+     * * 设置掷骰子魔法表情
+     * 因为掷骰子里面不能包含其他内容,所以设置后将清除已设置内容并且无法进行后续任何添加操作
+     * * 添加唯一属性
+     * ```
+     * @deprecated 该 CQcode 暂未被 go-cqhttp 支持, 您可以提交 pr 以使该 CQcode 被支持 提交 pr
+     */
+    setShake() {
+        if (this.only) { return; }
+        this.reset();
+        this.only = true;
+        this.context.push({
+            "type": "shake",
+            "data": {}
+        });
+        return this;
+    }
+
+    /**
+     * 匿名发消息
+     * ```
+     * 因为匿名消息里面不能包含其他内容,所以设置后将清除已设置内容并且无法进行后续任何添加操作
+     * * 添加唯一属性
+     * ```
+     * @deprecated 该 CQcode 暂未被 go-cqhttp 支持, 您可以提交 pr 以使该 CQcode 被支持 提交 pr
+     */
+    setAnonymous() {
+        if (this.only) { return; }
+        this.reset();
+        this.only = true;
+        this.context.push({
+            "type": "anonymous",
+            "data": {}
+        });
+        return this;
+    }
 
 
     /**
@@ -197,4 +375,7 @@ export class MsgInfoBuilder {
         return this;
     }
 
+    toCQCodeString() {
+        return Msg_InfoToStringMsg(this.context);
+    }
 }

@@ -95,7 +95,7 @@ export class WebsocketClient {
         "onDestroy": new Event<() => void>(logger)
     }
     constructor(private connect: string) {
-        this._client = new WebSocket(connect);
+        this._client = new WebSocket(connect, { "protocol": "TLSv1 TLSv1.1 TLSv1.2" });
         this._Init();
         // this._client.connect(connect);
         // logger.info("Connect:", connect);
