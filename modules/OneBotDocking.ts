@@ -11,7 +11,7 @@ import { GroupBaseInfo } from "./QQDataTypes/GroupBaseInfo";
 import { GroupInfo } from "./QQDataTypes/GroupInfo";
 import { GroupMemberInfo } from "./QQDataTypes/GroupMemberInfo";
 import { HonorType } from "./QQDataTypes/HonorType";
-import { MsgInfo, MsgInfoEx, Msg_Info } from "./QQDataTypes/MsgInfo";
+import { ForwardNodeData, MsgInfo, MsgInfoEx, Msg_Info } from "./QQDataTypes/MsgInfo";
 import { OfflineFileInfo } from "./QQDataTypes/OfflineFileInfo";
 import { SenderInfo } from "./QQDataTypes/SenderInfo";
 import { StrangerInfo } from "./QQDataTypes/StrangerInfo";
@@ -20,6 +20,7 @@ import { ErrorPrint } from "./ErrorPrint";
 import { GuildMetaInfo } from "./QQChannelTypes/GuildMetaInfo";
 import { ChannelInfo } from "./QQChannelTypes/ChannelInfo";
 import { GuildMemberInfo, GuildMemberProfileInfo } from "./QQChannelTypes/GuildMemberInfo";
+import { ForwardMessageInfo, ForwardMsgs } from "./QQDataTypes/ForwardMessageInfo";
 
 
 // let logger = new Logger("Bot", LoggerLevel.Info);
@@ -121,7 +122,7 @@ async function AutoReplaceCQCode(msg: string, _this: OneBotDocking, fn: (name: s
  * 处理OneBot消息
  */
 async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
-    let sender = new SenderInfo(obj.sender);
+    let sender = new SenderInfo({ ...obj.sender, "isGroupMember": obj.message_type == "group" ? true : false, "isGuildMember": obj.message_type == "guild" });
     // console.log(obj.sender);
 
 
@@ -606,7 +607,9 @@ export class OneBotDocking {
         "onFriendRecall": new Event<(friendInfo: FriendInfo, msg: MsgInfoEx) => void>(this.DelayLogger),
         "onFriendRequestAdd": new Event<(strangerInfo: StrangerInfo, comment: string, flag: string) => void>(this.DelayLogger),
         "onGroupRequestJoin": new Event<(groupInfo: GroupBaseInfo, isInviteSelf: boolean, strangerInfo: StrangerInfo, comment: string, flag: string) => void>(this.DelayLogger),
+        /** 注意!戳一戳消息会上报自身行为! */
         "onGroupPoke": new Event<(group: GroupInfo, sender: GroupMemberInfo, target: GroupMemberInfo) => void>(this.DelayLogger),
+        /** 注意!戳一戳消息会上报自身行为! */
         "onFriendPoke": new Event<(sender: FriendInfo) => void>(this.DelayLogger),
         "onGroupRedPacketLuckKing": new Event<(group: GroupInfo, sender: GroupMemberInfo, target: GroupMemberInfo) => void>(this.DelayLogger),
         "onGroupHonorChanged": new Event<(group: GroupInfo, honor: HonorType, member: GroupMemberInfo) => void>(this.DelayLogger),
@@ -949,7 +952,7 @@ ${err.stack}
     async getMsgInfoEx(msg_id: number) {
         let data = (await this.getMsg(msg_id)).data;
         // console.log(data);
-        if (!data) {
+        if (data == null) {
             this.logger.error(`获取QQ消息信息失败!`);
             return null;
         }
@@ -966,6 +969,43 @@ ${err.stack}
         await new Promise((r) => { setTimeout(r, 2000); });//sleep 2s
         await this.RefreshAllFriendInfo();
         return +!this._Friends.has(user_id);
+    }
+
+    /** 获取合并转发消息 */
+    async getForwardMsgEx(id: string) {
+        let data = await this.getForwardMsg(id);
+        if (data.data != null) {
+            return new ForwardMessageInfo(data.data);
+        }
+        return undefined;
+    }
+
+    /**发送转发消息至群 */
+    async sendGroupForwardMsgEx(group_id: number, messages: ForwardNodeData[]) {
+        let res = await this.sendGroupForwardMsg(group_id, messages);
+        if (res.data != null) {
+            return {
+                /**消息ID */
+                "message_id": res.data.message_id as number,
+                /**转发消息 ID */
+                "forward_id": res.data.forward_id as string
+            };
+        }
+        return undefined;
+    }
+
+    /**发送转发消息至私聊 */
+    async sendPrivateForwardMsgEx(group_id: number, messages: ForwardNodeData[]) {
+        let res = await this.sendPrivateForwardMsg(group_id, messages);
+        if (res.data != null) {
+            return {
+                /**消息ID */
+                "message_id": res.data.message_id as number,
+                /**转发消息 ID */
+                "forward_id": res.data.forward_id as string
+            };
+        }
+        return undefined;
     }
 
     //#region API
@@ -995,8 +1035,16 @@ ${err.stack}
     getMsg(msg_id: number) {
         return this._SendReqPro("get_msg", { "message_id": msg_id });
     }
-    getForwardMsgs(id: string) {
+    getForwardMsg(id: string) {
         return this._SendReqPro("get_forward_msg", { "message_id": id });
+    }
+    /** 向群聊发送合并转发消息 */
+    sendGroupForwardMsg(group_id: number, messages: ForwardNodeData[]) {
+        return this._SendReqPro("send_group_forward_msg", { group_id, messages });
+    }
+    /** 向好友发送合并转发消息 */
+    sendPrivateForwardMsg(user_id: number, messages: ForwardNodeData[]) {
+        return this._SendReqPro("send_private_forward_msg", { user_id, messages });
     }
     /**
      * @param user_id 
@@ -1323,8 +1371,8 @@ ${err.stack}
     getOnlineClients(no_cache: boolean = false) {
         return this._SendReqPro("get_online_clients", { no_cache });
     }
-    getGroupMsgHistory(group_id: number) {
-        return this._SendReqPro("get_group_msg_history", { group_id });
+    getGroupMsgHistory(group_id: number, message_seq: number) {
+        return this._SendReqPro("get_group_msg_history", { group_id, message_seq });
     }
     setEssenceMsg(message_id: number) {
         return this._SendReqPro("set-essence_msg", { message_id });
@@ -1600,5 +1648,6 @@ export {
     MsgInfo,
     OfflineFileInfo,
     SenderInfo,
-    StrangerInfo
+    StrangerInfo,
+    ForwardNodeData
 };

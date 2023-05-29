@@ -28,7 +28,8 @@ let Colors: { [key: string]: string } = {
     "§l": "\x1b[1m", // BOLD
     "§o": "\x1b[3m", // ITALIC
     "§k": "",        // OBFUSCATED
-    "§r": "\x1b[0m", // RESET
+    // "§r": "\x1b[0m", // RESET
+    "§r": "\x1b[38;2;255;255;255m",
     "§": "",         //ESCAPE
 };
 
