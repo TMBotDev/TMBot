@@ -2,7 +2,7 @@ import path from "path";
 import { Version } from "../app";
 import { Logger } from "../tools/logger";
 import { WebsocketClient } from "./WebSocket";
-import { Event } from "./Event";
+import { TEvent } from "./TEvent";
 import { AnonymousInfo } from "./QQDataTypes/AnonymousInfo";
 import { DeviceInfo } from "./QQDataTypes/DeviceInfo";
 import { FileInfo } from "./QQDataTypes/FileInfo";
@@ -21,6 +21,7 @@ import { GuildMetaInfo } from "./QQChannelTypes/GuildMetaInfo";
 import { ChannelInfo } from "./QQChannelTypes/ChannelInfo";
 import { GuildMemberInfo, GuildMemberProfileInfo } from "./QQChannelTypes/GuildMemberInfo";
 import { ForwardMessageInfo, ForwardMsgs } from "./QQDataTypes/ForwardMessageInfo";
+import { GuildSystem } from "./GuildSystem";
 
 
 // let logger = new Logger("Bot", LoggerLevel.Info);
@@ -576,56 +577,56 @@ export class OneBotDocking {
     // public ShareData = new ShareData();
 
     private _events = {
-        "onRawMessage": new Event<(rawInfo: string, ori: (isExecute: boolean, raw: string) => void) => void>(this.DelayLogger),
+        "onRawMessage": new TEvent<(rawInfo: string, ori: (isExecute: boolean, raw: string) => void) => void>(this.DelayLogger),
         /**
          * ```
          * 初始化数据成功
          * 此监听会重复触发,因为重新连接也会初始化一次数据
          * ```
          */
-        "onInitSuccess": new Event<() => void>(this.DelayLogger),
+        "onInitSuccess": new TEvent<() => void>(this.DelayLogger),
         /**
          * 此监听可能会重复触发,因为重连机制
          */
-        "onClientDisconnect": new Event<() => void>(this.DelayLogger),
-        "onClientDestroy": new Event<() => void>(this.DelayLogger),
-        "onClientStatusChanged": new Event<(device: DeviceInfo, online: boolean) => void>(this.DelayLogger),
-        "onPrivateMsg": new Event<(senderInfo: SenderInfo, sub_type: "friend" | "group" | "discuss" | "other", msgInfo: MsgInfo) => void>(this.DelayLogger),
-        "onGroupMsg": new Event<(groupInfo: GroupInfo, sub_type: "normal" | "anonymous" | "notice", groupMemberInfo: GroupMemberInfo | AnonymousInfo, msgInfo: MsgInfo) => void>(this.DelayLogger),
-        // "onDiscussMsg": new Event<(discussInfo: DiscussInfo, senderInfo: SenderInfo, msgInfo: MsgInfo) => void>(),
-        "onGroupUploadFile": new Event<(groupInfo: GroupInfo, groupMemberInfo: GroupMemberInfo, fileInfo: FileInfo) => void>(this.DelayLogger),
-        "onGroupAdminChange": new Event<(groupInfo: GroupInfo, memberInfo: GroupMemberInfo, sub_type: "set" | "unset") => void>(this.DelayLogger),
+        "onClientDisconnect": new TEvent<() => void>(this.DelayLogger),
+        "onClientDestroy": new TEvent<() => void>(this.DelayLogger),
+        "onClientStatusChanged": new TEvent<(device: DeviceInfo, online: boolean) => void>(this.DelayLogger),
+        "onPrivateMsg": new TEvent<(senderInfo: SenderInfo, sub_type: "friend" | "group" | "discuss" | "other", msgInfo: MsgInfo) => void>(this.DelayLogger),
+        "onGroupMsg": new TEvent<(groupInfo: GroupInfo, sub_type: "normal" | "anonymous" | "notice", groupMemberInfo: GroupMemberInfo | AnonymousInfo, msgInfo: MsgInfo) => void>(this.DelayLogger),
+        // "onDiscussMsg": new TEvent<(discussInfo: DiscussInfo, senderInfo: SenderInfo, msgInfo: MsgInfo) => void>(),
+        "onGroupUploadFile": new TEvent<(groupInfo: GroupInfo, groupMemberInfo: GroupMemberInfo, fileInfo: FileInfo) => void>(this.DelayLogger),
+        "onGroupAdminChange": new TEvent<(groupInfo: GroupInfo, memberInfo: GroupMemberInfo, sub_type: "set" | "unset") => void>(this.DelayLogger),
         /**
          * @note leave//主动离开,kick//被踢,//kick_me//登录号被踢
          */
-        "onGroupLeave": new Event<(groupInfo: GroupInfo, sub_type: "leave" | "kick" | "kick_me", memberInfo: GroupMemberInfo, operator: StrangerInfo | undefined) => void>(this.DelayLogger),
-        "onGroupJoin": new Event<(groupInfo: GroupBaseInfo, isInvite: boolean, strangerInfo: StrangerInfo, operator: StrangerInfo | undefined) => void>(this.DelayLogger),
-        "onGroupWholeMute": new Event<(group: GroupInfo, isUnMute: boolean, operator: GroupMemberInfo) => void>(this.DelayLogger),
-        "onGroupMute": new Event<(groupInfo: GroupInfo, isUnMute: boolean, memberInfo: GroupMemberInfo, operator: GroupMemberInfo) => void>(this.DelayLogger),
-        "onGroupRecall": new Event<(groupInfo: GroupInfo, memberInfo: GroupMemberInfo, operator: GroupMemberInfo, msg: MsgInfoEx) => void>(this.DelayLogger),
-        "onFriendAdd": new Event<(strangerInfo: StrangerInfo) => void>(this.DelayLogger),
-        "onFriendRecall": new Event<(friendInfo: FriendInfo, msg: MsgInfoEx) => void>(this.DelayLogger),
-        "onFriendRequestAdd": new Event<(strangerInfo: StrangerInfo, comment: string, flag: string) => void>(this.DelayLogger),
-        "onGroupRequestJoin": new Event<(groupInfo: GroupBaseInfo, isInviteSelf: boolean, strangerInfo: StrangerInfo, comment: string, flag: string) => void>(this.DelayLogger),
+        "onGroupLeave": new TEvent<(groupInfo: GroupInfo, sub_type: "leave" | "kick" | "kick_me", memberInfo: GroupMemberInfo, operator: StrangerInfo | undefined) => void>(this.DelayLogger),
+        "onGroupJoin": new TEvent<(groupInfo: GroupBaseInfo, isInvite: boolean, strangerInfo: StrangerInfo, operator: StrangerInfo | undefined) => void>(this.DelayLogger),
+        "onGroupWholeMute": new TEvent<(group: GroupInfo, isUnMute: boolean, operator: GroupMemberInfo) => void>(this.DelayLogger),
+        "onGroupMute": new TEvent<(groupInfo: GroupInfo, isUnMute: boolean, memberInfo: GroupMemberInfo, operator: GroupMemberInfo) => void>(this.DelayLogger),
+        "onGroupRecall": new TEvent<(groupInfo: GroupInfo, memberInfo: GroupMemberInfo, operator: GroupMemberInfo, msg: MsgInfoEx) => void>(this.DelayLogger),
+        "onFriendAdd": new TEvent<(strangerInfo: StrangerInfo) => void>(this.DelayLogger),
+        "onFriendRecall": new TEvent<(friendInfo: FriendInfo, msg: MsgInfoEx) => void>(this.DelayLogger),
+        "onFriendRequestAdd": new TEvent<(strangerInfo: StrangerInfo, comment: string, flag: string) => void>(this.DelayLogger),
+        "onGroupRequestJoin": new TEvent<(groupInfo: GroupBaseInfo, isInviteSelf: boolean, strangerInfo: StrangerInfo, comment: string, flag: string) => void>(this.DelayLogger),
         /** 注意!戳一戳消息会上报自身行为! */
-        "onGroupPoke": new Event<(group: GroupInfo, sender: GroupMemberInfo, target: GroupMemberInfo) => void>(this.DelayLogger),
+        "onGroupPoke": new TEvent<(group: GroupInfo, sender: GroupMemberInfo, target: GroupMemberInfo) => void>(this.DelayLogger),
         /** 注意!戳一戳消息会上报自身行为! */
-        "onFriendPoke": new Event<(sender: FriendInfo) => void>(this.DelayLogger),
-        "onGroupRedPacketLuckKing": new Event<(group: GroupInfo, sender: GroupMemberInfo, target: GroupMemberInfo) => void>(this.DelayLogger),
-        "onGroupHonorChanged": new Event<(group: GroupInfo, honor: HonorType, member: GroupMemberInfo) => void>(this.DelayLogger),
-        "onGroupCardChanged": new Event<(group: GroupInfo, member: GroupMemberInfo, card: string) => void>(this.DelayLogger),
-        "onReceiveOfflineFile": new Event<(stranger: StrangerInfo, offlineFile: OfflineFileInfo) => void>(this.DelayLogger),
-        "onGroupEssenceMsgChanged": new Event<(group: GroupInfo, sub_type: "add" | "delete", sender: GroupMemberInfo, operator: GroupMemberInfo, msg: MsgInfoEx) => void>(this.DelayLogger),
+        "onFriendPoke": new TEvent<(sender: FriendInfo) => void>(this.DelayLogger),
+        "onGroupRedPacketLuckKing": new TEvent<(group: GroupInfo, sender: GroupMemberInfo, target: GroupMemberInfo) => void>(this.DelayLogger),
+        "onGroupHonorChanged": new TEvent<(group: GroupInfo, honor: HonorType, member: GroupMemberInfo) => void>(this.DelayLogger),
+        "onGroupCardChanged": new TEvent<(group: GroupInfo, member: GroupMemberInfo, card: string) => void>(this.DelayLogger),
+        "onReceiveOfflineFile": new TEvent<(stranger: StrangerInfo, offlineFile: OfflineFileInfo) => void>(this.DelayLogger),
+        "onGroupEssenceMsgChanged": new TEvent<(group: GroupInfo, sub_type: "add" | "delete", sender: GroupMemberInfo, operator: GroupMemberInfo, msg: MsgInfoEx) => void>(this.DelayLogger),
         /**
          * 心跳包触发
          * @note interval是心跳包触发时间
          */
-        "onHeartBeat": new Event<(interval: number) => void>(this.DelayLogger),
+        "onHeartBeat": new TEvent<(interval: number) => void>(this.DelayLogger),
         /**
          * 生命周期
          * @note 首次建立连接插件会错过connect生命周期,建议使用onInitSuccess代替connect生命周期
         */
-        "onLifecycle": new Event<(type: "enable" | "disable" | "connect") => void>(this.DelayLogger)
+        "onLifecycle": new TEvent<(type: "enable" | "disable" | "connect") => void>(this.DelayLogger)
     }
 
     public logger: Logger;
@@ -1416,226 +1417,6 @@ ${err.stack}
 }
 
 
-export class GuildSystem {
-    private _Profile = { "nickname": "Unknown", "tiny_id": "-1", "avatar_url": "" }
-    private _Guilds = new Map<string, GuildInfo>();
-    constructor(protected _this: OneBotDocking) { }//这里的运行时间在主类初始化之前
-    private get log() { return this._this.logger; }
-    /** 在主类执行_Init的时候这玩意会自动执行 */
-    async _Init() {
-        this.log.info(`§l§e----------------`);
-        this.log.info(`开始初始化频道信息...`);
-        if (
-            !(await this._loadSelfProfile()) ||
-            !(await this._loadAllGuildInfo())
-        ) {
-            this.log.warn(`初始化频道信息失败!无法使用频道系统!`);
-            return false;
-        }
-        // let list = await this.getGuildListEx();
-        // let mems = await this.getGuildMemberListEx(list[0].guild_id);
-        // let res = await this.getGuildMemberProfileEx(list[0].guild_id, mems?.members[0].user_id!);
-        // let msgId = await this._this.sendMsgEx(1, 980444970, "[CQ:at,qq=2847696890] 测试", false);
-        // let msg = await this._this.getMsgInfoEx(msgId);
-        // this.log.info(msg?.toMsgInfo().raw);
-        this.log.info(`初始化频道信息完成!`);
-        return true;
-    }
-    async _loadSelfProfile() {
-        this.log.info(`开始获取频道Bot资料...`);
-        let res = await this.getGuildServiceProfile();
-        if (res.data != null) {
-            this._Profile.nickname = res.data.nickname;
-            this._Profile.tiny_id = res.data.tiny_id;
-            this._Profile.avatar_url = res.data.avatar_url;
-            this.log.info(`获取频道Bot资料完成`);
-            return true;
-        }
-        this.log.error(`获取频道Bot资料失败`);
-        return false;
-    }
-    async _loadAllGuildInfo() {
-        this._Guilds.clear();
-        let list = await this.getGuildListEx();
-        let l = list.length, i = 0;
-        while (i < l) {
-            let guild = list[i];
-            if (!(await guild._init(this))) {
-                return false;
-            }
-            this._Guilds.set(guild.guild_id, guild);
-            i++;
-        }
-        return true;
-    }
-
-
-    get OneBotDocking() { return this._this; }
-
-    /** 
-     * ```
-     * 没有加入任何讨论组返回空数组 
-     * 加强版(自动转换类型)
-     * ```
-     */
-    async getGuildListEx() {
-        let res = await this.getGuildList();
-        let arr: GuildInfo[] = [];
-        if (res.data == null) { return arr; }
-        let i = 0, l = res.data.length;
-        while (i < l) {
-            arr.push(new GuildInfo(res.data[i]));
-            i++;
-        }
-        return arr;
-    }
-
-    /** 
-     * ```
-     * 通过访客方式获取频道元数据
-     * go-cqhttp v1.0.1无法使用
-     * 加强版(自动转换类型)
-     * ```
-     */
-    async getGuildMetaByGuestEx(guild_id: string) {
-        let res = await this.getGuildMetaByGuest(guild_id);
-        if (res.data == null) {
-            this.log.error(`获取频道 ${guild_id} 元数据失败!`);
-            return;
-        }
-        return new GuildMetaInfo(res.data);
-    }
-
-    /**
-     * ```
-     * 获取子频道列表
-     * 加强版(自动转换类型)
-     * ```
-     */
-    async getGuildChannelListEx(guild_id: string, no_cache = false) {
-        let res = await this.getGuildChannelList(guild_id, no_cache);
-        if (res.data == null) {
-            this.log.error(`获取频道 ${guild_id} 子频道列表失败!`);
-            return;
-        }
-        let arr: ChannelInfo[] = [];
-        let l = res.data.length, i = 0;
-        while (i < l) {
-            arr.push(new ChannelInfo(res.data[i]));
-            i++;
-        }
-        return arr;
-    }
-
-    /**
-     * ```
-     * 获取频道成员列表
-     * 加强版(自动转换类型)
-     * ```
-     */
-    async getGuildMemberListEx(guild_id: string) {
-        let w = async (nextToken?: string) => {
-            let res = await this.getGuildMemberList(guild_id, nextToken);
-            if (res.data == null) {
-                this.log.error(`无法获取频道 ${guild_id} 成员列表!`);
-                return;
-            }
-            let { members, finished, next_token } = res.data;
-            let mems: GuildMemberInfo[] = [];
-            let l = members.length, i = 0;
-            while (i < l) {
-                mems.push(new GuildMemberInfo(members[i]));
-                i++;
-            }
-            if (finished) {
-                return {
-                    "finished": finished,
-                    "next": undefined,
-                    "token": undefined,
-                    "members": mems
-                }
-            } else {
-                return {
-                    "finished": finished,
-                    "next": async () => {
-                        return await w(next_token);
-                    },
-                    "token": next_token,
-                    "members": mems
-                }
-            }
-        }
-        return await w();
-    }
-
-    /**
-     * ```
-     * 单独获取频道成员信息
-     * 加强版(自动转换类型)
-     * ```
-     */
-    async getGuildMemberProfileEx(guild_id: string, tiny_id: string) {
-        let res = await this.getGuildMemberProfile(guild_id, tiny_id);
-        if (res.data == null) {
-            this.log.error(`获取频道 ${guild_id} 成员 ${tiny_id} 信息失败!`);
-            return;
-        }
-        return new GuildMemberProfileInfo(res.data);
-    }
-
-    /** 
-     * ```
-     * 发送频道消息
-     * 加强版(自动转换类型) 
-     * ```
-     */
-    async sendMsgEx(guild_id: string, channel_id: string, msg: Msg_Info[] | string) {
-        let res = await this.sendGuildChannelMsg(guild_id, channel_id, msg);
-        if (res.data == null) {
-            this.log.error(`发送频道 ${guild_id}(${channel_id}) 消息失败!`);
-            return;
-        }
-        return res.data.message_id as string;
-    }
-
-
-    /**
-     * 获取频道系统内BOT的资料
-     */
-    getGuildServiceProfile() {
-        return this._this._SendReqPro("get_guild_service_profile", {});
-    }
-    /**
-     * 获取已加入频道列表
-     */
-    getGuildList() {
-        return this._this._SendReqPro("get_guild_list", {});
-    }
-    /** 通过访客方式获取频道元数据(暂不可用) */
-    getGuildMetaByGuest(guild_id: string) {
-        return this._this._SendReqPro("get_guild_meta_by_guest", { guild_id });
-    }
-    /** 获取子频道列表 */
-    getGuildChannelList(guild_id: string, no_cache: boolean) {
-        return this._this._SendReqPro("get_guild_channel_list", { guild_id, no_cache });
-    }
-    /** 获取频道成员列表 */
-    getGuildMemberList(guild_id: string, next_token?: string | undefined) {
-        let obj: obj = { guild_id };
-        if (!!next_token) { obj["next_token"] = next_token; }
-        return this._this._SendReqPro("get_guild_member_list", obj);
-    }
-    /** 单独获取频道成员信息 */
-    getGuildMemberProfile(guild_id: string, user_id: string) {
-        return this._this._SendReqPro("get_guild_member_profile", { guild_id, user_id });
-    }
-    /** 发送信息到子频道 */
-    sendGuildChannelMsg(guild_id: string, channel_id: string, message: string | Msg_Info[]) {
-        return this._this._SendReqPro("send_guild_channel_msg", { guild_id, channel_id, message });
-    }
-}
-
-
 export {
     AnonymousInfo,
     DeviceInfo,
@@ -1649,5 +1430,6 @@ export {
     OfflineFileInfo,
     SenderInfo,
     StrangerInfo,
-    ForwardNodeData
+    ForwardNodeData,
+    GuildSystem
 };

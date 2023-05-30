@@ -3,7 +3,7 @@
 // import * as websocket_ts from "websocket-ts";
 import { WebSocket } from "ws";
 import { Logger } from "../tools/logger";
-import { Event } from "./Event";
+import { TEvent } from "./TEvent";
 
 let logger = new Logger("WebsocketClient", 4);
 
@@ -14,7 +14,7 @@ let logger = new Logger("WebsocketClient", 4);
 
 // export class WebsocketServer {
 //     private _Events = {
-//         "connection": new Event<(_socket: CustomConnection, _req: ws.request) => void>()
+//         "connection": new TEvent<(_socket: CustomConnection, _req: ws.request) => void>()
 //     };
 //     private _IdMap: { [key: number]: { "req": IncomingMessage, "res": ServerResponse<IncomingMessage> } } = {};
 //     private _httpServer: Server<typeof IncomingMessage, typeof ServerResponse>;
@@ -88,11 +88,11 @@ export class WebsocketClient {
     // private _conn: websocket_ts.Websocket | undefined;
     private isDestroyed = false;
     private _events = {
-        "onStart": new Event<() => void>(logger),
-        "onMsg": new Event<(msg: string | Buffer, isBuffer: boolean) => void>(logger),
-        "onClose": new Event<(code: number, desc: string) => void>(logger),
-        "onError": new Event<(err: Error) => void>(logger),
-        "onDestroy": new Event<() => void>(logger)
+        "onStart": new TEvent<() => void>(logger),
+        "onMsg": new TEvent<(msg: string | Buffer, isBuffer: boolean) => void>(logger),
+        "onClose": new TEvent<(code: number, desc: string) => void>(logger),
+        "onError": new TEvent<(err: Error) => void>(logger),
+        "onDestroy": new TEvent<() => void>(logger)
     }
     constructor(private connect: string) {
         this._client = new WebSocket(connect, { "protocol": "TLSv1 TLSv1.1 TLSv1.2" });

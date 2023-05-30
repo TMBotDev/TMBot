@@ -43,13 +43,26 @@ export class GuildInfo {
     get guild_display_id() { return this.obj.guild_display_id; }
     /** 获取子频道信息 */
     getChannel(channel_id: string) { return this.ChannelMap.get(channel_id); }
+    /** 获取子频道列表 */
+    getChannelList() {
+        let arr: ChannelInfo[] = [];
+        let iter = this.ChannelMap.entries();
+        let now = iter.next();// as IteratorReturnResult<[string, ChannelInfo]>;
+        while (!now.done) {
+            let val = now.value;
+            arr.push(val[1]);
+            now = iter.next()// as IteratorReturnResult<[string, ChannelInfo]>;
+        }
+        return arr;
+    }
     /**
      * ```
      * 方便函数,快捷发送消息
-     * @returns 消息ID
      * ```
+     * 警告！频道消息只支持部分CQ码
+     * * 详情见: [ https://docs.go-cqhttp.org/guild/#%E5%91%BD%E5%90%8D%E8%AF%B4%E6%98%8E ]
      */
-    async sendMsg(_this: GuildSystem, channel_id: string, msg: Msg_Info[] | string) {
-        return await _this.sendGuildChannelMsg(this.obj.guild_id, channel_id, msg);
+    sendMsg(_this: GuildSystem, channel_id: string, msg: Msg_Info[] | string) {
+        return _this.sendMsgEx(this.obj.guild_id, channel_id, msg);
     }
 }

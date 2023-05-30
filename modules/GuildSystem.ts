@@ -1,4 +1,4 @@
-import { OneBotDocking } from "./OneBotDocking";
+import { OneBotDocking, obj } from "./OneBotDocking";
 import { ChannelInfo } from "./QQChannelTypes/ChannelInfo";
 import { GuildInfo } from "./QQChannelTypes/GuildInfo";
 import { GuildMemberInfo, GuildMemberProfileInfo } from "./QQChannelTypes/GuildMemberInfo";
