@@ -104,6 +104,7 @@ function ReplaceDate(str: string) {
     return str;
 }
 
+let InLLSE = (() => { return typeof (ll) != "undefined"; })();
 
 export class Logger {
     #Title: string; #isSyncOutput: boolean;
@@ -137,12 +138,13 @@ export class Logger {
                 (this.#Title == "" ? "" : AutoReplace("[{}]", this.#Title)),
                 text
             );
-            var ColorLogStr: string = AutoReplace("{}{} {}{} {}{} {}{}",
+            var ColorLogStr: string = AutoReplace("{}{} {}{} {}{}{} {}{}",
                 getColor("38", "2", "173", "216", "230"),//TimeColor
                 NowDateStr.split(" ")[1],//Time
                 getColor((type == LoggerLevel.Info ? "38;2;0;170;170" : color)),//TypeColor
                 typeStr,//Type
                 getColor(color),//Msg Color
+                InLLSE ? "[TMBot]" : "",
                 (this.#Title != "" ? `[${this.#Title}]` : ""),//Title
                 text,//Msg
                 getColor("0")//Clear

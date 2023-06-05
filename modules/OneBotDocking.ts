@@ -1,5 +1,4 @@
 import path from "path";
-import { Version } from "../app";
 import { Logger } from "../tools/logger";
 import { WebsocketClient } from "./WebSocket";
 import { TEvent } from "./TEvent";
@@ -15,13 +14,11 @@ import { ForwardNodeData, MsgInfo, MsgInfoEx, Msg_Info } from "./QQDataTypes/Msg
 import { OfflineFileInfo } from "./QQDataTypes/OfflineFileInfo";
 import { SenderInfo } from "./QQDataTypes/SenderInfo";
 import { StrangerInfo } from "./QQDataTypes/StrangerInfo";
-import { GuildInfo } from "./QQChannelTypes/GuildInfo";
 import { ErrorPrint } from "./ErrorPrint";
-import { GuildMetaInfo } from "./QQChannelTypes/GuildMetaInfo";
-import { ChannelInfo } from "./QQChannelTypes/ChannelInfo";
-import { GuildMemberInfo, GuildMemberProfileInfo } from "./QQChannelTypes/GuildMemberInfo";
 import { ForwardMessageInfo, ForwardMsgs } from "./QQDataTypes/ForwardMessageInfo";
 import { GuildSystem } from "./GuildSystem";
+import { MessageDB } from "./MessageDB";
+import { GlobalVar } from "./Global";
 
 
 // let logger = new Logger("Bot", LoggerLevel.Info);
@@ -60,27 +57,34 @@ export type ret_data_struct = {
 }
 
 
-async function SafeGetGroupInfo(this: OneBotDocking, group_id: number) {
-    let group = this.getGroupInfoSync(group_id);
-    if (group == null) {
-        group = new GroupInfo({
-            "group_id": group_id,
-            "group_name": (await this.getGroupBaseInfoEx(group_id))!.group_name
-        });
-        await group._init(this);
-        this.Groups.set(group.group_id, group);
-    }
-    return group;
+function SafeGetGroupInfo(this: OneBotDocking, group_id: number) {
+    return new Promise<GroupInfo>(async (ret) => {
+        let group = this.getGroupInfoSync(group_id);
+        if (group == null) {
+            let base = await this.getGroupBaseInfoEx(group_id);
+            if (!!base) {
+                group = new GroupInfo({
+                    "group_id": group_id,
+                    "group_name": base.group_name
+                });
+                await group._init(this);
+                this.Groups.set(group.group_id, group);
+            }
+        }
+        if (!!group) { return ret(group); }
+        this.logger.error(`无法获取群聊: {${group}} 信息`);
+    });
 }
 
 /**
  * 截断超出的字符串,阶段部分用"..."表示
+ * @note 自动替换换行消息
  */
 function TruncateString(text: string, size: number) {
     if (text.length > size) {
         text = text.substring(0, size) + "...";
     }
-    return text;
+    return text.replace(/\n/g, "\\n").replace(/\r/g, "\\r");
 }
 
 function CQCodeDataToObj(e: string) {
@@ -96,7 +100,7 @@ function CQCodeDataToObj(e: string) {
 /**
  * 自动替换CQ码
  */
-async function AutoReplaceCQCode(msg: string, _this: OneBotDocking, fn: (name: string, data: obj) => Promise<string>) {
+async function AutoReplaceCQCode(msg: string, fn: (name: string, data: obj) => Promise<string>) {
     let CQCodeIndex = msg.indexOf("[CQ:");
     while (CQCodeIndex != -1) {
         let CCLIndex = CQCodeIndex + 4;
@@ -131,6 +135,18 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
         case "private": {
             // console.log(obj)
             let msg = new MsgInfo({ "message": obj.message, "message_id": obj.message_id, "raw_message": obj.raw_message });
+            if (this.conf["GetMsgUseLevelDB"]) {
+                await this._MsgDB.setMsg(msg.msg_id, {
+                    "group": false,
+                    "group_id": undefined,
+                    "message_id": msg.msg_id,
+                    "message": msg.msg,
+                    "message_type": "private",
+                    "real_id": -1,
+                    "sender": obj.sender,
+                    "time": obj.time
+                });
+            }
             // this.MsgIDMap.set(msg.msg_id, msg);
             // console.log(JSON.stringify(obj.raw_message, null, 2));
             this.events.onPrivateMsg.fire(
@@ -141,22 +157,34 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
                 msg
             );
 
-            this.conf["MsgLog"] && this.logger.info(`私聊消息: ${sender.nickname} >> ${await AutoReplaceCQCode(TruncateString(msg.originalContent, 100), this, async (name, _d) => name)}`);
+            this.conf["MsgLog"] && this.logger.info(`私聊消息: ${sender.nickname} >> ${await AutoReplaceCQCode(TruncateString(msg.originalContent, 100), async (name, _d) => name)}`);
             break;
         }
         case "group": {
             let msg = new MsgInfo({ "message": obj.message, "message_id": obj.message_id, "raw_message": obj.raw_message });
-            // this.MsgIDMap.set(msg.msg_id, msg);
 
             let group = await SafeGetGroupInfo.call(this, obj.group_id);
             let member: GroupMemberInfo | AnonymousInfo;
-            // console.log(obj);
+
+            if (this.conf["GetMsgUseLevelDB"]) {
+                await this._MsgDB.setMsg(msg.msg_id, {
+                    "group": true,
+                    "group_id": group.group_id,
+                    "message_id": msg.msg_id,
+                    "message": msg.msg,
+                    "message_type": "group",
+                    "real_id": -1,
+                    "sender": obj.sender,
+                    "time": obj.time
+                });
+            }
 
             if (obj.sub_type == "anonymous") {
                 member = new AnonymousInfo(obj.group_id, obj.anonymous);
             } else {
                 // console.log(sender)
-                member = (await group.refreshMemberInfo(this, sender.user_id))!;
+                member = (await group.refreshMemberInfo(this, sender.user_id)) as any;
+                if (!member) { return; }
                 // member = group.senderGetMember(sender)!;
             }
             this.events.onGroupMsg.fire(
@@ -168,7 +196,7 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
                 msg
             );
             this.conf["MsgLog"] &&
-                this.logger.info(`[${group.group_name}(${group.group_id})] ${sender.nickname} >> ${TruncateString(await AutoReplaceCQCode(msg.originalContent, this, async (name, data) => {
+                this.logger.info(`[${group.group_name}(${group.group_id})] ${sender.nickname} >> ${TruncateString(await AutoReplaceCQCode(msg.originalContent, async (name, data) => {
                     if (name.toLowerCase() == "at") {
                         let user = (await group.refreshMemberInfo(this, +data["qq"]));
                         if (user == null) {
@@ -184,7 +212,7 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
         //     break;
         // }
         case "guild": {
-            ProcessOneBotGuildEvent.call(this, obj);
+            GuildSystem.ProcessOneBotGuildEvent.call(this.guildSystem, obj);
             break;
         }
     }
@@ -198,7 +226,8 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
     switch (obj.notice_type as "group_upload" | "group_admin" | "group_decrease" | "group_increase" | "group_ban" | "group_recall" | "friend_add" | "friend_recall" | "notify" | "group_card" | "offline_file" | "client_status" | "essence" | "message_reactions_updated" | "channel_updated" | "channel_created" | "channel_destroyed") {
         case "group_upload": {
             let group = await SafeGetGroupInfo.call(this, obj.group_id);
-            let member = group.getMember(obj.user_id)!;
+            let member = group.getMember(obj.user_id);
+            if (!member) { return; }
             let file = new FileInfo(obj.file);
             this.events.onGroupUploadFile.fire(
                 "OneBotDockingProcess_Event_GroupUploadFile",
@@ -211,7 +240,30 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
         }
         case "group_admin": {
             let group = await SafeGetGroupInfo.call(this, obj.group_id);
-            let member = group.getMember(obj.user_id)!;
+            let member = group.getMember(obj.user_id);
+            let isUpdate = false;
+            if (!member) {
+                member = await group.refreshMemberInfo(this, obj.user_id);
+                if (!member) { return; }
+                isUpdate = true;
+                member = new GroupMemberInfo({
+                    "group_id": member.group_id,
+                    "user_id": member.user_id,
+                    "nickname": member.nickname,
+                    "card": member.card,
+                    "sex": member.sex,
+                    "age": member.age,
+                    "join_time": member.join_time,
+                    "last_sent_time": member.last_sent_time,
+                    "level": member.level,
+                    "role": obj.sub_type == "set" ? "member" : "admin",
+                    "card_changeable": member.card_changeable,
+                    "title": member.title,
+                    "title_expire_time": member.title_expire_time,
+                    "unfriendly": member.unfriendly,
+                    "shut_up_timestamp": member.shut_up_timestamp
+                });
+            }
             this.events.onGroupAdminChange.fire(
                 "OneBotDockingProcess_Event_GroupAdminChange",
                 obj.time * 1000,
@@ -220,7 +272,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
                 obj.sub_type
             );
             let perms = ["Admin", "Member"];
-            await group.refreshMemberInfo(this, member.user_id);
+            !isUpdate && await group.refreshMemberInfo(this, member.user_id);
             this.conf["NoticeLog"] && this.logger.info(`[${group.group_name} (${group.group_id})]群管理员变动: ${member.card || member.nickname} (${member.user_id}) (${perms[+(obj.sub_type == "set")]}) -> (${perms[+(obj.sub_type == "unset")]})`);
             break;
         }
@@ -283,7 +335,8 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
         }
         case "group_ban": {
             let group = await SafeGetGroupInfo.call(this, obj.group_id);
-            let op = (await group.refreshMemberInfo(this, obj.operator_id))!;
+            let op = (await group.refreshMemberInfo(this, obj.operator_id));
+            if (!op) { return; }
             if (obj.user_id == 0) {
                 this.events.onGroupWholeMute.fire(
                     "OneBotDockingProcess_Event_GroupWholeMute",
@@ -293,7 +346,8 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
                     op
                 );
             } else {
-                let member = (await group.refreshMemberInfo(this, obj.user_id))!;
+                let member = (await group.refreshMemberInfo(this, obj.user_id));
+                if (!member) { return; }
                 this.events.onGroupMute.fire(
                     "OneBotDockingProcess_Event_GroupMute",
                     obj.time * 1000,
@@ -307,8 +361,9 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
         }
         case "group_recall": {
             let group = await SafeGetGroupInfo.call(this, obj.group_id);
-            let member = group.getMember(obj.user_id)!;
-            let op = group.getMember(obj.operator_id)!;
+            let member = await group.refreshMemberInfo(this, obj.user_id);
+            let op = await group.refreshMemberInfo(this, obj.operator_id);
+            if (!member || !op) { return; }
             let msg = await this.getMsgInfoEx(obj.message_id);
             // let msg = this.MsgIDMap.get(obj.message_id);
             if (!msg) {
@@ -402,7 +457,30 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
         }
         case "group_card": {
             let group = await SafeGetGroupInfo.call(this, obj.group_id);
-            let member = group.getMember(obj.user_id)!;
+            let member = group.getMember(obj.user_id);
+            let isUpdate = false;
+            if (!member) {
+                member = await group.refreshMemberInfo(this, obj.user_id);
+                if (!member) { return; }
+                isUpdate = true;
+                member = new GroupMemberInfo({
+                    "group_id": member.group_id,
+                    "user_id": member.user_id,
+                    "nickname": member.nickname,
+                    "card": obj.card_old,
+                    "sex": member.sex,
+                    "age": member.age,
+                    "join_time": member.join_time,
+                    "last_sent_time": member.last_sent_time,
+                    "level": member.level,
+                    "role": member.role,
+                    "card_changeable": member.card_changeable,
+                    "title": member.title,
+                    "title_expire_time": member.title_expire_time,
+                    "unfriendly": member.unfriendly,
+                    "shut_up_timestamp": member.shut_up_timestamp
+                });
+            }
             this.events.onGroupCardChanged.fire(
                 "OneBotDockingProcess_Event_GroupCardChanged",
                 obj.time * 1000,
@@ -410,7 +488,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
                 member,
                 obj.card_new
             );
-            member.card = obj.card_new;
+            !isUpdate && group.refreshMemberInfo(this, member.user_id);
             break;
         }
         case "offline_file": {
@@ -440,8 +518,9 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             let msg = await this.getMsgInfoEx(obj.message_id);
             // let msg = this.MsgIDMap.get(obj.message_id);
             if (!msg) { return; }
-            let sender = (await group.refreshMemberInfo(this, obj.sender_id))!;
-            let op = (await group.refreshMemberInfo(this, obj.operator_id))!;
+            let sender = (await group.refreshMemberInfo(this, obj.sender_id));
+            let op = (await group.refreshMemberInfo(this, obj.operator_id));
+            if (!sender || !op) { return; }
             this.events.onGroupEssenceMsgChanged.fire(
                 "OneBotDockingProcess_Event_GroupEssenceMsgChanged",
                 obj.time * 1000,
@@ -458,7 +537,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
         case "channel_destroyed":
         case "channel_updated":
         case "message_reactions_updated": {
-            ProcessOneBotGuildEvent.call(this, obj);
+            GuildSystem.ProcessOneBotGuildEvent.call(this.guildSystem, obj);
             break;
         }
     }
@@ -494,22 +573,6 @@ async function ProcessOneBotRequest(this: OneBotDocking, obj: obj) {
                 obj.flag
             );
             break;
-        }
-    }
-}
-
-/**
- * 处理OneBot频道事件(各类分支)
- */
-async function ProcessOneBotGuildEvent(this: OneBotDocking, obj: obj) {
-    // console.log(obj)
-    switch (obj.post_type as "message" | "notice") {
-        case "message": {
-
-        }
-        case "notice": {
-
-
         }
     }
 }
@@ -574,6 +637,8 @@ export class OneBotDocking {
 
     private _guildSystem: undefined | GuildSystem = new GuildSystem(this);
 
+    protected _MsgDB: MessageDB;
+
     // public ShareData = new ShareData();
 
     private _events = {
@@ -635,8 +700,9 @@ export class OneBotDocking {
         private wsc: WebsocketClient,
         public conf: obj
     ) {
-        this.logger = new Logger(Name, (Version.isDebug ? 5 : 4));
+        this.logger = new Logger(Name, (GlobalVar.Version.isDebug ? 5 : 4));
         this._Init();
+        this._MsgDB = {} as MessageDB;
         if (!!(conf["LogFile"] || "").trim()) {
             this.logger.setFile(path.join("./logs", conf["LogFile"]));
         }
@@ -664,26 +730,21 @@ export class OneBotDocking {
     get Client() { return this.wsc; }
     get events() { return this._events; }
     get LoginInfo() { return { "user_id": this._LoginInfo.user_id, "nickname": this._LoginInfo.nickname }; }
+    /** 不推荐直接使用,此属性为內部API专用 */
     get Groups() { return this._Groups; }
+    /** 不推荐直接使用,此属性为內部API专用 */
     get Friends() { return this._Friends; }
 
     _Init() {
         this._IsInitd = false;
         this._RequestCallbacks = {};
         this.wsc.events.onStart.on(async () => {
-            // this.sendMsg("group", 1073980007, "复读机已启动");
-            // this._SendReqPro("get_group_member_list", {
-            //     "group_id": 1073980007
-            // }).then((val) => {
-            //     console.log(val);
-
-            // });
             if ((await this._loadLoginInfo()) &&
                 (await this._loadFriends()) &&
                 (await this._loadGroupsInfo())) {
+                if (!this.conf["ChannelSystem"] || !(await this._guildSystem!._Init())) { this._guildSystem = undefined; }
                 this._events.onInitSuccess.fire("OneBotDockingProcess_Event_InitSuccess", null);
                 this.logger.info(`基础信息初始化成功!`);
-                if (!this.conf["ChannelSystem"] || !this._guildSystem!._Init()) { this._guildSystem = undefined; }
                 this._IsInitd = true;
             } else {
                 this.logger.fatal(`基础信息初始化失败!`);
@@ -832,6 +893,7 @@ ${err.stack}
             "user_id": data.user_id,
             "nickname": data.nickname
         }
+        this._MsgDB = new MessageDB(`./data/MsgInfo/${this._LoginInfo.user_id}`);
         this.logger.info(`登陆号信息获取完成: ${data.nickname} (${data.user_id})`);
         return true;
     }
@@ -949,7 +1011,7 @@ ${err.stack}
         return res.data.message_id as number;
     }
 
-    /** 获取聊天消息(频道消息请使用OneBotDocking.guild.getMsgEx获取) */
+    /** 获取聊天消息(频道消息请使用OneBotDocking.guildSystem.getMsgEx获取) */
     async getMsgInfoEx(msg_id: number) {
         let data = (await this.getMsg(msg_id)).data;
         // console.log(data);
@@ -1034,7 +1096,18 @@ ${err.stack}
         return this._SendReqPro("delete_msg", { "message_id": msg_id });
     }
     getMsg(msg_id: number) {
-        return this._SendReqPro("get_msg", { "message_id": msg_id });
+        return new Promise<ret_data_struct>(async (ret) => {
+            if (this.conf["GetMsgUseLevelDB"]) {
+                let data: any = await this._MsgDB.getMsg(msg_id);
+                ret({
+                    "message": "",
+                    "data": data,
+                    "status": "ok",
+                    "retcode": 0
+                } as ret_data_struct);
+            }
+            this._SendRequest("get_msg", { "message_id": msg_id }, (obj) => { ret(obj); });
+        });
     }
     getForwardMsg(id: string) {
         return this._SendReqPro("get_forward_msg", { "message_id": id });

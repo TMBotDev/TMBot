@@ -129,10 +129,13 @@ export class MsgInfo {
     get isForwardNode() { return this._isForwardNode; }
     /** 合并转发消息ID */
     get forwardNodeId() { return this._forwardId; }
-    getForwardNodeMsg() {
-
+    /** 获取合并转发消息 */
+    getForwardNodeMsg(_this: OneBotDocking) {
+        if (this._isForwardNode) {
+            return _this.getForwardMsgEx(this._forwardId!);
+        }
+        return new Promise<undefined>(r => r(undefined));
     }
-
 
     toString() { return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj)}`; }
 }
@@ -169,21 +172,23 @@ function Msg_InfoToStringMsg(msg: Msg_Info[]) {
     return str;
 }
 
+export type MsgTypeInfoEx = {
+    "group": boolean,
+    "group_id": number | undefined,
+    "message": Msg_Info[] | string,
+    "message_id": number,
+    "real_id": number,
+    "message_type": "group" | "private",
+    "sender": { "nickname": string, "user_id": number },
+    "time": number
+};
+
 /**
  * 消息信息(sendMsgEx函数所返回数据)
  */
 export class MsgInfoEx {
-    private _sender: SenderInfo
-    constructor(private obj: {
-        "group": boolean,
-        "group_id": number | undefined,
-        "message": Msg_Info[] | string,
-        "message_id": number,
-        "real_id": number,
-        "message_type": "group",
-        "sender": { "nickname": string, "user_id": number },
-        "time": number
-    }) { this._sender = new SenderInfo({ "nickname": obj.sender.nickname, "user_id": obj.sender.user_id, "age": 0, "sex": "unknown", "isGroupMember": false, "isGuildMember": false }); }
+    private _sender: SenderInfo;
+    constructor(private obj: MsgTypeInfoEx) { this._sender = new SenderInfo({ "nickname": obj.sender.nickname, "user_id": obj.sender.user_id, "age": 0, "sex": "unknown", "isGroupMember": false, "isGuildMember": false }); }
     /** 是否为群消息 */
     get isGroupMsg() { return this.obj.group; }
     /** 群号 */

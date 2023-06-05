@@ -1,6 +1,6 @@
 {
   "name": "TMBot",
-  "version":"1.0.2",
+  "version": "1.0.2",
   "description": "TM机器人框架(OneBot标准)",
   "main": "./app.js",
   "scripts": {

@@ -1,26 +1,239 @@
-import { OneBotDocking, obj } from "./OneBotDocking";
-import { ChannelInfo } from "./QQChannelTypes/ChannelInfo";
+import { OneBotDocking, obj, ret_data_struct } from "./OneBotDocking";
+import { GuildChannelInfo } from "./QQChannelTypes/GuildChannelInfo";
 import { GuildInfo } from "./QQChannelTypes/GuildInfo";
 import { GuildMemberInfo, GuildMemberProfileInfo } from "./QQChannelTypes/GuildMemberInfo";
 import { GuildMetaInfo } from "./QQChannelTypes/GuildMetaInfo";
-import { Msg_Info } from "./QQDataTypes/MsgInfo";
+import { GuildMsgInfo, GuildMsgInfoEx } from "./QQChannelTypes/GuildMsgInfo";
+import { GuildSenderInfo } from "./QQChannelTypes/GuildSenderInfo";
+import { ReactionInfos } from "./QQChannelTypes/ReactionInfo";
+import { MsgInfo, Msg_Info } from "./QQDataTypes/MsgInfo";
 import { TEvent } from "./TEvent";
 
 
+function SafeGetGuild(this: GuildSystem, guild_id: string) {
+    return new Promise<GuildInfo>(async (ret) => {
+        if (this.Guilds.has(guild_id)) {
+            return ret(this.Guilds.get(guild_id)!);
+        }
+        let guilds = await this.getGuildListEx();
+        let i = 0, l = guilds.length;
+        while (i < l) {
+            let guild = guilds[i];
+            if (guild.guild_id == guild_id) {
+                await guild._init(this);
+                this.Guilds.set(guild_id, guild);
+                return ret(guild);
+            }
+            i++;
+        }
+        this.log.error(`获取频道信息: {${guild_id}} 失败!`);
+    });
+}
+
+function SafeGetChannel(this: GuildSystem, guild: GuildInfo, channel_id: string) {
+    return new Promise<GuildChannelInfo>(async (ret) => {
+        let res = guild.getChannel(channel_id);
+        if (!res) {
+            let cls = await this.getGuildChannelListEx(guild.guild_id, true);
+            if (!!cls) {
+                let l = cls.length, i = 0;
+                while (i < l) {
+                    let cl = cls[i];
+                    if (cl.channel_id == channel_id) {
+                        guild._updateChannelInfo("add", cl);
+                        return cl;
+                    }
+                    i++;
+                }
+            }
+        }
+        if (!!res) { return ret(res); }
+        logger.error(`获取频道: {${guild.guild_name}} 子频道: ${channel_id} 信息失败!`);
+    });
+}
+
+
+/**
+ * 截断超出的字符串,截断部分用"..."表示
+ * @note 自动替换换行消息
+ */
+function TruncateString(text: string, size: number) {
+    if (text.length > size) {
+        text = text.substring(0, size) + "...";
+    }
+    return text.replace(/\n/g, "\\n").replace(/\r/g, "\\r");
+}
+
+function CQCodeDataToObj(e: string) {
+    let obj: obj = {};
+    let arr = e.split(",");
+    arr.forEach((v) => {
+        let arr = v.split("=");
+        obj[arr[0]] = arr[1];
+    });
+    return obj;
+}
+
+/**
+ * 自动替换CQ码
+ */
+async function AutoReplaceCQCode(msg: string, fn: (name: string, data: obj) => Promise<string>) {
+    let CQCodeIndex = msg.indexOf("[CQ:");
+    while (CQCodeIndex != -1) {
+        let CCLIndex = CQCodeIndex + 4;
+        let name = "", _End = false;
+        while (msg[CCLIndex] != "]" && msg[CCLIndex] != undefined) {
+            if (msg[CCLIndex] == ",") { _End = true; }
+            if (!_End) {
+                name += msg[CCLIndex];
+            }
+            CCLIndex += 1;
+        }
+        CCLIndex += 1;
+        let str = msg.substring(CQCodeIndex, CCLIndex).replace(/[ ]/g, "");
+        let data = str.substring((4 + name.length), (str.length - 1));
+        if (!!data) { data = data.substring(1); }
+        name = name[0].toUpperCase() + name.substring(1);
+        msg = msg.substring(0, CQCodeIndex) + `§d[${await fn(name, CQCodeDataToObj(data))}]§r` + msg.substring(CCLIndex);
+        CQCodeIndex = msg.indexOf("[CQ:");
+    }
+    return msg;
+}
+
+/**
+ * 处理OneBot频道事件(各类分支)
+ */
+async function ProcessOneBotGuildEvent(this: GuildSystem | undefined, obj: obj) {
+    // console.log(obj)
+    if (this == undefined) { return; }
+    switch (obj.post_type as "message" | "notice") {
+        case "message": {
+            ProcessGuildMessage.call(this, obj);
+            break;
+        }
+        case "notice": {
+            ProcessGuildNotice.call(this, obj);
+            break;
+        }
+    }
+}
+
+async function ProcessGuildMessage(this: GuildSystem, obj: obj) {
+    let sender = new GuildSenderInfo(obj.sender);
+    switch (obj.message_type as "guild") {
+        case "guild": {
+            let guild = await SafeGetGuild.call(this, obj.guild_id);
+            let channel = await SafeGetChannel.call(this, guild, obj.channel_id);
+            let msg = new GuildMsgInfo(obj.message, obj.message_id);
+            await (function (this: OneBotDocking) {
+                return this._MsgDB.setGuildMsg(msg.msg_id, {
+                    "guild": true,
+                    "guild_id": guild.guild_id,
+                    "message": msg.msg,
+                    "message_id": msg.msg_id,
+                    "message_type": obj.message_type,
+                    "sender": obj.sender,
+                    "time": obj.time
+                });
+            }).call(this.OneBotDocking);
+            let member = await sender.getDetail(this, obj.guild_id);
+            if (!member) { return; }
+            this.events.onChannelMsg.fire(
+                "GuildSystemProcess_Event_ChannelMsg",
+                obj.time * 1000,
+                guild,
+                obj.sub_type,
+                channel,
+                member,
+                msg
+            );
+            this.OneBotDocking.conf["MsgLog"] &&
+                this.log.info(`[频道][${guild.guild_name}(${guild.guild_display_id})] ${sender.nickname} >> ${TruncateString(await AutoReplaceCQCode(msg.originalContent, async (name, data) => {
+                    if (name.toLowerCase() == "at") {
+                        let user = (await guild.getGuildMember(this, data["qq"]));
+                        if (user == null) {
+                            name = "@" + data["qq"];
+                        } else { name = "@" + user.nickname; }
+                    }
+                    return `§e${name}§d`;
+                }), 100)}`);
+        }
+    }
+}
+
+async function ProcessGuildNotice(this: GuildSystem, obj: obj) {
+    let channelUpdateType: "add" | "del" | "update" | "" = "";
+    switch (obj.notice_type as "message_reactions_updated" | "channel_updated" | "channel_created" | "channel_destroyed") {
+        case "message_reactions_updated": {
+            let guild = await SafeGetGuild.call(this, obj.guild_id);
+            let channel = await SafeGetChannel.call(this, guild, obj.channel_id);
+            let member = await this.getGuildMemberProfileEx(guild.guild_id, obj.user_id);
+            if (!member) { return; }
+            let reactionInfos = new ReactionInfos(obj.current_reactions);
+            this.events.onChannelMsgReactionUpdated.fire(
+                "GuildSystemProcess_Event_ChannelMsgReactionUpdate",
+                obj.time * 1000,
+                guild,
+                channel,
+                member,
+                reactionInfos
+            );
+            break;
+        }
+        case "channel_updated": channelUpdateType = "update"; break;
+        case "channel_created": channelUpdateType = "add"; break;
+        case "channel_destroyed": channelUpdateType = "del"; break;
+    }
+
+    if (!!channelUpdateType) {
+        let guild = await SafeGetGuild.call(this, obj.guild_id);
+        let newChannel: GuildChannelInfo | undefined;
+        let oldChannel: GuildChannelInfo | undefined;
+        switch (channelUpdateType) {
+            case "update": {
+                oldChannel = new GuildChannelInfo(obj.old_info);
+                newChannel = new GuildChannelInfo(obj.new_info);
+                break;
+            }
+            case "add": {
+                newChannel = new GuildChannelInfo(obj.channel_info);
+                break;
+            }
+            case "del": {
+                oldChannel = new GuildChannelInfo(obj.channel_info);
+                break;
+            }
+        }
+        this.events.onChannelInfoUpdated.fire(
+            "GuildSystemProcess_Event_ChannelInfoUpdate",
+            obj.time * 1000,
+            guild,
+            channelUpdateType,
+            obj.channel_id,
+            newChannel
+        );
+        guild._updateChannelInfo(channelUpdateType, (newChannel || oldChannel)!);
+    }
+}
 
 export class GuildSystem {
+    static ProcessOneBotGuildEvent = ProcessOneBotGuildEvent;
     private _Profile = { "nickname": "Unknown", "tiny_id": "-1", "avatar_url": "" }
     private _Guilds = new Map<string, GuildInfo>();
-    constructor(protected _this: OneBotDocking) { }//这里的运行时间在主类初始化之前
-    private get log() { return this._this.logger; }
+    public get log() { return this._this.logger; }
+    private DelayLogger = { "error": (...msg: any[]) => { this.log.error(...msg); } };
     private _event = {
         /**子频道消息*/
-        "onChannelMsg": new TEvent<() => void>(this.log),
+        "onChannelMsg": new TEvent<(guild: GuildInfo, sub_type: "channel", channel: GuildChannelInfo, member: GuildMemberProfileInfo, msg: GuildMsgInfo) => void>(this.DelayLogger),
         /**子频道表情贴更新*/
-        "onChannelReactionUpdate": new TEvent<() => void>(this.log),
-        /**子频道信息更新*/
-        "onChannelInfoUpdate": new TEvent<() => void>(this.log)
+        "onChannelMsgReactionUpdated": new TEvent<(guild: GuildInfo, channel: GuildChannelInfo, user: GuildMemberProfileInfo, reactions: ReactionInfos) => void>(this.DelayLogger),
+        /**
+         * 子频道信息更新
+         * @note 旧数据使用 GuildInfo.getChannel 获取
+         */
+        "onChannelInfoUpdated": new TEvent<(guild: GuildInfo, sub_type: ("add" | "del" | "update"), channel_id: string, new_data: GuildChannelInfo | undefined) => void>(this.DelayLogger)
     };
+    constructor(protected _this: OneBotDocking) { }//这里的运行时间在主类初始化之前
     /** 在主类执行_Init的时候这玩意会自动执行 */
     async _Init() {
         this.log.info(`§l§e----------------`);
@@ -32,12 +245,6 @@ export class GuildSystem {
             this.log.warn(`初始化频道信息失败!无法使用频道系统!`);
             return false;
         }
-        // let list = await this.getGuildListEx();
-        // let mems = await this.getGuildMemberListEx(list[0].guild_id);
-        // let res = await this.getGuildMemberProfileEx(list[0].guild_id, mems?.members[0].user_id!);
-        // let msgId = await this._this.sendMsgEx(1, 980444970, "[CQ:at,qq=2847696890] 测试", false);
-        // let msg = await this._this.getMsgInfoEx(msgId);
-        // this.log.info(msg?.toMsgInfo().raw);
         this.log.info(`初始化频道信息完成!`);
         return true;
     }
@@ -71,6 +278,9 @@ export class GuildSystem {
 
 
     get OneBotDocking() { return this._this; }
+    get events() { return this._event; }
+    /** 不推荐直接使用,此属性为內部API专用 */
+    get Guilds() { return this._Guilds; }
 
     getGuildSync(guild_id: string) {
         return this._Guilds.get(guild_id);
@@ -122,10 +332,10 @@ export class GuildSystem {
             this.log.error(`获取频道 ${guild_id} 子频道列表失败!`);
             return;
         }
-        let arr: ChannelInfo[] = [];
+        let arr: GuildChannelInfo[] = [];
         let l = res.data.length, i = 0;
         while (i < l) {
-            arr.push(new ChannelInfo(res.data[i]));
+            arr.push(new GuildChannelInfo(res.data[i]));
             i++;
         }
         return arr;
@@ -204,6 +414,33 @@ export class GuildSystem {
         return res.data.message_id as string;
     }
 
+    async getGuildMsgEx(msg_id: string) {
+        let res = await this.getGuildMsg(msg_id);
+        if (res.data == null) {
+            this.log.error(`获取频道消息: ${msg_id} 失败!`);
+            return;
+        }
+        return new GuildMsgInfoEx(res.data);
+    }
+
+    getGuildMsg(msg_id: string) {
+        // if (this._this.conf["GetMsgUseLevelDB"]) {
+        return new Promise<ret_data_struct>(async (ret) => {
+            let fn = function (this: OneBotDocking) {
+                return this._MsgDB.getGuildMsg(msg_id);
+            };
+            let data = await fn.call(this._this);
+            ret({
+                "status": "ok",
+                "retcode": 0,
+                "msg": undefined,
+                "wording": undefined,
+                "message": "",
+                "data": data
+            });
+        });
+        // }
+    }
 
     /**
      * 获取频道系统内BOT的资料

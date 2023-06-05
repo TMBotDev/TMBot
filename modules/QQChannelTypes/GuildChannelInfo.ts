@@ -5,7 +5,7 @@ import { SlowModeInfo } from "./SlowModeInfo";
 /**
  * 子频道信息
  */
-export class ChannelInfo {
+export class GuildChannelInfo {
     private slowModes: SlowModeInfo;
     constructor(private obj: {
         "owner_guild_id": string,	//所属频道ID
@@ -67,5 +67,8 @@ export class ChannelInfo {
      */
     sendMsg(_this: GuildSystem, msg: string | Msg_Info[]) {
         return this.getGuild(_this)!.sendMsg(_this, this.channel_id, msg)
+    }
+    toString() {
+        return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj, null, 2)}`;
     }
 }
