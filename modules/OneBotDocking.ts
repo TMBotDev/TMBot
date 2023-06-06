@@ -743,7 +743,7 @@ export class OneBotDocking {
             if ((await this._loadLoginInfo()) &&
                 (await this._loadFriends()) &&
                 (await this._loadGroupsInfo())) {
-                if (!this.conf["ChannelSystem"] || !(await this._guildSystem!._Init())) { this._guildSystem = undefined; }
+                if (!this.conf["GuildSystem"] || !(await this._guildSystem!._Init())) { this._guildSystem = undefined; }
                 this._events.onInitSuccess.fire("OneBotDockingProcess_Event_InitSuccess", null);
                 this.logger.info(`基础信息初始化成功!`);
                 this._IsInitd = true;
