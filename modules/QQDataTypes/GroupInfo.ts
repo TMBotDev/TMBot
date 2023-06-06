@@ -10,7 +10,7 @@ export class GroupInfo {
     private _Owner: GroupMemberInfo | undefined;
     private _Admins = new Map<number, GroupMemberInfo>();
     private _Members = new Map<number, GroupMemberInfo>();
-    private _RefreshMap = new Map<number, number>();
+    protected _RefreshMap = new Map<number, number>();
     constructor(private obj: {
         "group_id": number,
         "group_name": string
@@ -62,7 +62,7 @@ export class GroupInfo {
         }
 
         let val = await _this.getGroupMemberInfoEx(+this.obj.group_id, +user_id, true);
-        console.log(val);
+        // console.log(val);
         if (!val) {
             _this.logger.error(`[${this.obj.group_name}(${this.obj.group_id})] 刷新成员 ${mem == null ? user_id : `${mem.card || mem.nickname}(${mem.user_id})`} 信息失败!`);
             return mem;

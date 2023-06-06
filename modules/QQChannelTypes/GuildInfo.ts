@@ -1,9 +1,49 @@
+import { GlobalEvent } from "../Global";
 import { GuildSystem } from "../OneBotDocking";
 import { Msg_Info } from "../QQDataTypes/MsgInfo";
 import { GuildChannelInfo } from "./GuildChannelInfo";
+import { GuildMemberProfileInfo } from "./GuildMemberInfo";
+
+
+class DataCache<T, TT> extends Map<T, TT> {
+    private data: [T, number][] = [];
+    private sid: NodeJS.Timer | number;
+    constructor(sec: number, entries?: readonly (readonly [T, TT])[] | null) {
+        super(entries);
+        let time = (sec * 1000);
+        this.sid = setInterval(() => {
+            let now = Date.now();
+            let t = true;
+            while (t) {
+                let f = this.data[0];
+                if (!f) { t = false; return; }
+                if ((now - f[1]) >= time) {
+                    // console.log("delete:" + f[0]);
+                    this.delete(f[0]);
+                    this.data.shift();
+                }
+                t = false;
+            }
+        }, 1000 * 10);
+        GlobalEvent.onTMBotStop.on(() => {
+            this.close();
+        });
+    }
+    /** 请使用has来确认是否存在 */
+    putCache(k: T, v: TT) {
+        if (!!this.data.find((v) => { return v[0] == k; })) { return this; }
+        this.data.push([k, Date.now()]);
+        return this.set(k, v);
+    }
+    close() {
+        clearInterval(this.sid);
+        return true;
+    }
+}
 
 export class GuildInfo {
     private ChannelMap = new Map<string, GuildChannelInfo>();
+    protected MemberCache = new DataCache<string, GuildMemberProfileInfo>(60 * 30);//半小时
     constructor(private obj: {
         "guild_id": string,
         "guild_name": string,
@@ -55,8 +95,8 @@ export class GuildInfo {
         }
         return arr;
     }
-    getGuildMember(_this: GuildSystem, tiny_id: string) {
-        return _this.getGuildMemberProfileEx(this.obj.guild_id, tiny_id);
+    getGuildMember(_this: GuildSystem, tiny_id: string, no_cache = false) {
+        return _this.getGuildMemberProfileEx(this.obj.guild_id, tiny_id, no_cache);
     }
     /**
      * ```

@@ -299,6 +299,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
                     (group.getAdmins(false) as Map<number, GroupMemberInfo>).delete(member.user_id);
                 }
                 (group.getMembers(false) as Map<number, GroupMemberInfo>).delete(member.user_id);
+                (function (this: GroupInfo) { return this._RefreshMap; }).call(group).delete(member.user_id);
                 this.conf["NoticeLog"] && this.logger.info(`[${group.group_name} (${group.group_id})] 成员 ${member.card || member.nickname} (${member.user_id}) 退出群聊`);
             }
             break;

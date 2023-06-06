@@ -18,7 +18,7 @@ export class GuildSenderInfo {
      */
     get user_id_Num() { return this.obj.user_id; }
     get nickname() { return this.obj.nickname; }
-    getDetail(_this: GuildSystem, guild_id: string) {
-        return _this.getGuildMemberProfileEx(guild_id, this.obj.tiny_id);
+    getDetail(_this: GuildSystem, guild_id: string, no_cache = false) {
+        return _this.getGuildMemberProfileEx(guild_id, this.obj.tiny_id, no_cache);
     }
 }

@@ -136,7 +136,7 @@ async function ProcessGuildMessage(this: GuildSystem, obj: obj) {
                     "time": obj.time
                 });
             }).call(this.OneBotDocking);
-            let member = await sender.getDetail(this, obj.guild_id);
+            let member = await sender.getDetail(this, obj.guild_id, false);
             if (!member) { return; }
             this.events.onChannelMsg.fire(
                 "GuildSystemProcess_Event_ChannelMsg",
@@ -150,7 +150,7 @@ async function ProcessGuildMessage(this: GuildSystem, obj: obj) {
             this.OneBotDocking.conf["MsgLog"] &&
                 this.log.info(`[频道][${guild.guild_name}(${guild.guild_display_id})] ${sender.nickname} >> ${TruncateString(await AutoReplaceCQCode(msg.originalContent, async (name, data) => {
                     if (name.toLowerCase() == "at") {
-                        let user = (await guild.getGuildMember(this, data["qq"]));
+                        let user = (await guild.getGuildMember(this, data["qq"], false));
                         if (user == null) {
                             name = "@" + data["qq"];
                         } else { name = "@" + user.nickname; }
@@ -388,13 +388,28 @@ export class GuildSystem {
      * 加强版(自动转换返回类型)
      * ```
      */
-    async getGuildMemberProfileEx(guild_id: string, tiny_id: string) {
+    async getGuildMemberProfileEx(guild_id: string, tiny_id: string, no_cache = false) {
+        if (!no_cache) {
+            let guild = this.Guilds.get(guild_id);
+            if (!!guild) {
+                let memberCache = (function (this: GuildInfo) { return this.MemberCache; }).call(guild);
+                if (memberCache.has(tiny_id)) { return memberCache.get(tiny_id)!; }
+            }
+        }
         let res = await this.getGuildMemberProfile(guild_id, tiny_id);
         if (res.data == null) {
             this.log.error(`获取频道 ${guild_id} 成员 ${tiny_id} 信息失败!`);
             return;
         }
-        return new GuildMemberProfileInfo(res.data);
+        let res1 = new GuildMemberProfileInfo(res.data);
+        if (!no_cache) {
+            let guild = this.Guilds.get(guild_id);
+            if (!!guild) {//添加缓存
+                (function (this: GuildInfo) { return this.MemberCache; }).call(guild!)
+                    .putCache(tiny_id, res1);
+            }
+        }
+        return res1;
     }
 
     /** 
