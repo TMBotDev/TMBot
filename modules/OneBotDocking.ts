@@ -57,6 +57,21 @@ export type ret_data_struct = {
 }
 
 
+export class TMBotPromise<T, TT> extends Promise<T>{
+    private data: TT;
+    constructor(executor: (resolve: (value: T | PromiseLike<T>) => void, reject: (reason?: any) => void, getData: () => TT) => void, defData: TT) {
+        super((resolve, reject) => {
+            executor(resolve, reject, () => {
+                return this.data!;
+            });
+        });
+        this.data = defData;
+    }
+    setData(data: TT) { this.data = data; return this; }
+    getData() { return this.data; }
+}
+
+
 function SafeGetGroupInfo(this: OneBotDocking, group_id: number) {
     return new Promise<GroupInfo>(async (ret) => {
         let group = this.getGroupInfoSync(group_id);
@@ -839,7 +854,7 @@ export class OneBotDocking {
         }, 100);
     }
 
-    _SendRequest(type: string, params: { [key: string]: any }, func: (obj: ret_data_struct) => void) {
+    _SendRequest(type: string, params: { [key: string]: any }, func: (obj: ret_data_struct) => void, onError = (_data: obj) => true, err = new Error("Error Stack")) {
         let oriFunc = func;
         let id = Math.random().toString(16).slice(2);
         let content = JSON.stringify({
@@ -847,11 +862,10 @@ export class OneBotDocking {
             "params": params,
             "echo": id
         });
-        let err = new Error("Error Stack");
         func = (obj) => {
             if (obj.msg != null) {
                 this.logger.error(`API [${type}] 调用错误回执: ${obj.msg}(${obj.wording})`);
-                if (obj.msg != "API_ERROR") {
+                if ((obj.msg != "API_ERROR") && onError(obj)) {
                     ErrorPrint(`Use_OneBot_Websocket_API: ${type}`, `${obj.msg}(${obj.wording!})`, `发送数据:
 \`\`\`json
 ${content}
@@ -875,11 +889,14 @@ ${err.stack}
         this.wsc.send(content);
     }
     _SendReqPro(type: string, params: { [key: string]: any }) {
-        let pro = new Promise<ret_data_struct>((outMsg, outErr) => {
+        let pro = new TMBotPromise<ret_data_struct, boolean>((outMsg, outErr, getData) => {
             this._SendRequest(type, params, (obj) => {
                 outMsg(obj);
+            }, (data) => {
+                outErr(data);
+                return getData();
             });
-        });
+        }, true);
         return pro;
     }
 
@@ -955,7 +972,7 @@ ${err.stack}
     }
 
     async RefreshAllFriendInfo() {
-        let data = (await this.getFriendList()).data as ({
+        let data = (await this.getFriendList().setData(false)).data as ({
             "ClassType": "FriendData",
             "user_id": number,
             "nickname": string,
@@ -974,7 +991,7 @@ ${err.stack}
     }
 
     async getGroupBaseInfoEx(group_id: number) {
-        let data = (await this.getGroupInfo(group_id, true)).data;
+        let data = (await this.getGroupInfo(group_id, true).setData(false)).data;
         if (!data) {
             this.logger.error(`获取群聊 ${group_id} 基础信息失败!`);
             return;
@@ -983,7 +1000,7 @@ ${err.stack}
     }
 
     async getStrangerInfoEx(user_id: number, no_cache: boolean = true) {
-        let val = await this.getStrangerInfo(user_id, no_cache);
+        let val = await (this.getStrangerInfo(user_id, no_cache).setData(false));
         let data = val.data;
         if (data == null) {
             this.logger.error(`获取陌生人 ${user_id} 信息失败!`);
@@ -993,7 +1010,7 @@ ${err.stack}
     }
 
     async getGroupMemberInfoEx(group_id: number, user_id: number, no_cache: boolean = true) {
-        let val = await this.getGroupMemberInfo(group_id, user_id, no_cache);
+        let val = await (this.getGroupMemberInfo(group_id, user_id, no_cache));
         let data = val.data;
         if (data == null) {
             this.logger.error(`获取群 ${group_id} 成员 ${user_id} 信息失败!`);
@@ -1004,7 +1021,7 @@ ${err.stack}
     }
 
     async sendMsgEx(type: "private" | "group" | 0 | 1, id: number, msg: Msg_Info[] | string, auto_escape: boolean = false) {
-        let res = await this.sendMsg(type, id, msg, auto_escape);
+        let res = await (this.sendMsg(type, id, msg, auto_escape).setData(false));
         if (res.data == null) {
             this.logger.error(`发送消息至 ${type == 0 ? "private" : type == 1 ? "group" : type}(${id}) 失败!`);
             return;
@@ -1016,11 +1033,10 @@ ${err.stack}
     async getMsgInfoEx(msg_id: number) {
         let data = (await this.getMsg(msg_id)).data;
         // console.log(data);
-        if (data == null) {
-            this.logger.error(`获取QQ消息信息失败!`);
-            return null;
+        if (!data) {
+            return new MsgInfoEx(data);
         }
-        return new MsgInfoEx(data);
+        return undefined;
     }
 
     /**
@@ -1097,18 +1113,43 @@ ${err.stack}
         return this._SendReqPro("delete_msg", { "message_id": msg_id });
     }
     getMsg(msg_id: number) {
-        return new Promise<ret_data_struct>(async (ret) => {
+        let err = new Error("Error Stack");
+        return new TMBotPromise<ret_data_struct, boolean>(async (ret, rj, getData) => {
             if (this.conf["GetMsgUseLevelDB"]) {
-                let data: any = await this._MsgDB.getMsg(msg_id);
-                ret({
-                    "message": "",
-                    "data": data,
+                let data = await this._MsgDB.getMsg(msg_id);
+                let res: ret_data_struct = {
+                    "message": !data ? `没有找到消息: ${msg_id}` : "",
+                    "data": data as any,
                     "status": "ok",
-                    "retcode": 0
-                } as ret_data_struct);
+                    "retcode": 0,
+                    "msg": "GET_MSG_API_ERROR",
+                    "wording": !data ? `没有找到消息: ${msg_id}` : undefined
+                };
+                if (!data) {
+                    rj(res);
+                    this.logger.error(`LevelDB [get_msg] 调用错误回执: ${res.msg}(${res.wording})`);
+                    if (getData()) {
+                        ErrorPrint(`On_LevelDB_Get_Msg`, `${res.msg}(${res.wording!})`, `发送数据:
+\`\`\`json
+${{ "message_id": msg_id }}
+\`\`\`
+调用堆栈:
+\`\`\`txt
+${err.stack}
+\`\`\``, this.logger);
+
+                    }
+                }
+                ret(res);
+                return;
             }
-            this._SendRequest("get_msg", { "message_id": msg_id }, (obj) => { ret(obj); });
-        });
+            this._SendRequest("get_msg", { "message_id": msg_id }, (v) => {
+                ret(v);
+            }, (data) => {
+                rj(data);
+                return getData();
+            }, err);
+        }, true);
     }
     getForwardMsg(id: string) {
         return this._SendReqPro("get_forward_msg", { "message_id": id });

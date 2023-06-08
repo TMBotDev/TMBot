@@ -1,4 +1,5 @@
-import { OneBotDocking, obj, ret_data_struct } from "./OneBotDocking";
+import { ErrorPrint } from "./ErrorPrint";
+import { OneBotDocking, TMBotPromise, obj, ret_data_struct } from "./OneBotDocking";
 import { GuildChannelInfo } from "./QQChannelTypes/GuildChannelInfo";
 import { GuildInfo } from "./QQChannelTypes/GuildInfo";
 import { GuildMemberInfo, GuildMemberProfileInfo } from "./QQChannelTypes/GuildMemberInfo";
@@ -167,8 +168,10 @@ async function ProcessGuildNotice(this: GuildSystem, obj: obj) {
         case "message_reactions_updated": {
             let guild = await SafeGetGuild.call(this, obj.guild_id);
             let channel = await SafeGetChannel.call(this, guild, obj.channel_id);
+            // console.log(obj)
             let member = await this.getGuildMemberProfileEx(guild.guild_id, obj.user_id);
-            if (!member) { return; }
+            // if (!member) { return; }
+            // let member = undefined;
             let reactionInfos = new ReactionInfos(obj.current_reactions);
             this.events.onChannelMsgReactionUpdated.fire(
                 "GuildSystemProcess_Event_ChannelMsgReactionUpdate",
@@ -225,8 +228,10 @@ export class GuildSystem {
     private _event = {
         /**子频道消息*/
         "onChannelMsg": new TEvent<(guild: GuildInfo, sub_type: "channel", channel: GuildChannelInfo, member: GuildMemberProfileInfo, msg: GuildMsgInfo) => void>(this.DelayLogger),
-        /**子频道表情贴更新*/
-        "onChannelMsgReactionUpdated": new TEvent<(guild: GuildInfo, channel: GuildChannelInfo, user: GuildMemberProfileInfo, reactions: ReactionInfos) => void>(this.DelayLogger),
+        /**子频道表情贴更新
+         * @note 由于机器人原因,文档所提供的user_id有问题,所以现在的user参数固定为undefined
+         */
+        "onChannelMsgReactionUpdated": new TEvent<(guild: GuildInfo, channel: GuildChannelInfo, user: GuildMemberProfileInfo | undefined, reactions: ReactionInfos) => void>(this.DelayLogger),
         /**
          * 子频道信息更新
          * @note 旧数据使用 GuildInfo.getChannel 获取
@@ -293,7 +298,7 @@ export class GuildSystem {
      * ```
      */
     async getGuildListEx() {
-        let res = await this.getGuildList();
+        let res = await this.getGuildList().setData(false);
         let arr: GuildInfo[] = [];
         if (res.data == null) { return arr; }
         let i = 0, l = res.data.length;
@@ -312,7 +317,7 @@ export class GuildSystem {
      * ```
      */
     async getGuildMetaByGuestEx(guild_id: string) {
-        let res = await this.getGuildMetaByGuest(guild_id);
+        let res = await this.getGuildMetaByGuest(guild_id).setData(false);
         if (res.data == null) {
             this.log.error(`获取频道 ${guild_id} 元数据失败!`);
             return;
@@ -327,7 +332,7 @@ export class GuildSystem {
      * ```
      */
     async getGuildChannelListEx(guild_id: string, no_cache = false) {
-        let res = await this.getGuildChannelList(guild_id, no_cache);
+        let res = await this.getGuildChannelList(guild_id, no_cache).setData(false);
         if (res.data == null) {
             this.log.error(`获取频道 ${guild_id} 子频道列表失败!`);
             return;
@@ -396,7 +401,7 @@ export class GuildSystem {
                 if (memberCache.has(tiny_id)) { return memberCache.get(tiny_id)!; }
             }
         }
-        let res = await this.getGuildMemberProfile(guild_id, tiny_id);
+        let res = await this.getGuildMemberProfile(guild_id, tiny_id).setData(false);
         if (res.data == null) {
             this.log.error(`获取频道 ${guild_id} 成员 ${tiny_id} 信息失败!`);
             return;
@@ -421,7 +426,7 @@ export class GuildSystem {
      * * 详情见: [ https://docs.go-cqhttp.org/guild/#%E5%91%BD%E5%90%8D%E8%AF%B4%E6%98%8E ]
      */
     async sendMsgEx(guild_id: string, channel_id: string, msg: Msg_Info[] | string) {
-        let res = await this.sendGuildChannelMsg(guild_id, channel_id, msg);
+        let res = await (this.sendGuildChannelMsg(guild_id, channel_id, msg).setData(false));
         if (res.data == null) {
             this.log.error(`发送频道 ${guild_id}(${channel_id}) 消息失败!`);
             return;
@@ -430,7 +435,7 @@ export class GuildSystem {
     }
 
     async getGuildMsgEx(msg_id: string) {
-        let res = await this.getGuildMsg(msg_id);
+        let res = await (this.getGuildMsg(msg_id).setData(false));
         if (res.data == null) {
             this.log.error(`获取频道消息: ${msg_id} 失败!`);
             return;
@@ -439,22 +444,43 @@ export class GuildSystem {
     }
 
     getGuildMsg(msg_id: string) {
-        // if (this._this.conf["GetMsgUseLevelDB"]) {
-        return new Promise<ret_data_struct>(async (ret) => {
-            let fn = function (this: OneBotDocking) {
-                return this._MsgDB.getGuildMsg(msg_id);
-            };
-            let data = await fn.call(this._this);
-            ret({
-                "status": "ok",
-                "retcode": 0,
-                "msg": undefined,
-                "wording": undefined,
-                "message": "",
-                "data": data
-            });
-        });
-        // }
+        let err = new Error("Error Stack");
+        return new TMBotPromise<ret_data_struct, boolean>(async (ret, rj, getData) => {
+            if (this._this.conf["GetMsgUseLevelDB"]) {
+                let data = await (function (this: OneBotDocking) { return this._MsgDB }).call(this._this).getGuildMsg(msg_id);
+                let res: ret_data_struct = {
+                    "message": !data ? `没有找到消息: ${msg_id}` : "",
+                    "data": data as any,
+                    "status": "ok",
+                    "retcode": 0,
+                    "msg": "GET_MSG_API_ERROR",
+                    "wording": !data ? `没有找到消息: ${msg_id}` : undefined
+                };
+                if (!data) {
+                    rj(res);
+                    this.log.error(`LevelDB [get_guild_msg] 调用错误回执: ${res.msg}(${res.wording})`);
+                    if (getData()) {
+                        ErrorPrint(`On_LevelDB_Get_Guild_Msg`, `${res.msg}(${res.wording!})`, `发送数据:
+\`\`\`json
+${{ "message_id": msg_id }}
+\`\`\`
+调用堆栈:
+\`\`\`txt
+${err.stack}
+\`\`\``, this.log);
+
+                    }
+                }
+                ret(res);
+                return;
+            }
+            this._this._SendRequest("get_msg", { "message_id": msg_id }, (v) => {
+                ret(v);
+            }, (data) => {
+                rj(data);
+                return getData();
+            }, err);
+        }, true);
     }
 
     /**
