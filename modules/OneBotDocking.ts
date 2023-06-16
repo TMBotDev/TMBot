@@ -754,10 +754,11 @@ export class OneBotDocking {
     _Init() {
         this._IsInitd = false;
         this._RequestCallbacks = {};
+        let InitMsgLog = this.conf["InitMsgLog"];
         this.wsc.events.onStart.on(async () => {
-            if ((await this._loadLoginInfo()) &&
-                (await this._loadFriends()) &&
-                (await this._loadGroupsInfo())) {
+            if ((await this._loadLoginInfo(true)) &&
+                (await this._loadFriends(InitMsgLog)) &&
+                (await this._loadGroupsInfo(InitMsgLog))) {
                 if (!this.conf["GuildSystem"] || !(await this._guildSystem!._Init())) { this._guildSystem = undefined; }
                 this._events.onInitSuccess.fire("OneBotDockingProcess_Event_InitSuccess", null);
                 this.logger.info(`基础信息初始化成功!`);
@@ -900,11 +901,11 @@ ${err.stack}
         return pro;
     }
 
-    async _loadLoginInfo() {
+    async _loadLoginInfo(bool: boolean) {
         let val = await this.getLoginInfo();
         let data = val.data;
         if (data == null) {
-            this.logger.error(`登录号信息获取失败!`);
+            bool && this.logger.error(`登录号信息获取失败!`);
             return false;
         }
         this._LoginInfo = {
@@ -912,11 +913,11 @@ ${err.stack}
             "nickname": data.nickname
         }
         this._MsgDB = new MessageDB(`./data/MsgInfo/${this._LoginInfo.user_id}`);
-        this.logger.info(`登陆号信息获取完成: ${data.nickname} (${data.user_id})`);
+        bool && this.logger.info(`登陆号信息获取完成: ${data.nickname} (${data.user_id})`);
         return true;
     }
-    async _loadFriends() {
-        this.logger.info("正在加载好友列表...");
+    async _loadFriends(bool: boolean) {
+        bool && this.logger.info("正在加载好友列表...");
         this._Friends.clear();
         let val = await this.getFriendList();
         let data = val.data as ({
@@ -926,36 +927,37 @@ ${err.stack}
             "remark": string
         }[]) | null;
         if (data == null) {
-            this.logger.error("获取好友列表失败!");
+            bool && this.logger.error("获取好友列表失败!");
             return false;
         } else {
             let i = 0;
             data.forEach((val) => {
                 this._Friends.set(val.user_id, new FriendInfo(val));
-                this.logger.info(`加载好友: ${val.remark || val.nickname} (${val.user_id})`);
+                bool && this.logger.info(`加载好友: ${val.remark || val.nickname} (${val.user_id})`);
                 i++;
             });
-            this.logger.info(`加载完成!共 ${i} 个好友!`);
+            bool && this.logger.info(`加载完成!共 ${i} 个好友!`);
         }
         return true;
     }
-    async _loadGroupsInfo() {
-        this.logger.info("正在加载群聊信息...");
+    async _loadGroupsInfo(bool: boolean) {
+        bool && this.logger.info("正在加载群聊信息...");
         this._Groups.clear();
         let val = await this.getGroupList();
         let data = val.data as any[] | null;
         if (data == null) {
-            this.logger.error(`获取群聊列表失败!`);
+            bool && this.logger.error(`获取群聊列表失败!`);
             return false;
         }
         for (let i = 0, l = data.length; i < l; i++) {
             let val = data[i];
             if (!this._Groups.has(val.group_id)) {
                 let groupInfo = new GroupInfo(val);
-                await groupInfo._init(this);
+                if (!(await groupInfo._init(this, bool))) { return false; };
                 this._Groups.set(groupInfo.group_id, groupInfo);
             }
         }
+        this.logger.info(`群聊信息初始化完毕,共${data.length}个群`);
         return true;
     }
 
@@ -1529,6 +1531,10 @@ ${err.stack}
     }
     //#endregion
 
+
+    toString() {
+        return `<Class::${this.constructor.name}>\n${this.Name}`;
+    }
 }
 
 

@@ -124,6 +124,10 @@ export class GuildMsgInfo {
             "message_id": this._msg_id
         };
     }
+
+    toString() {
+        return `<Class::${this.constructor.name}>\n${JSON.stringify({ "message": this._msg, "message_id": this._msg_id }, null, 2)}`;
+    }
 }
 
 
@@ -168,4 +172,7 @@ export class GuildMsgInfoEx {
 
     toObject() { return this.obj; }
 
+    toString() {
+        return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj, null, 2)}`;
+    }
 }

@@ -49,9 +49,9 @@ export class GuildInfo {
         "guild_name": string,
         "guild_display_id": number
     }) { }
-    async _init(_this: GuildSystem) {
+    async _init(_this: GuildSystem, bool = _this.OneBotDocking.conf["InitMsgLog"]) {
         let log = _this.log;
-        log.info(`初始化频道 ${this.obj.guild_name} 子频道信息...`);
+        bool && log.info(`初始化频道 ${this.obj.guild_name} 子频道信息...`);
         let cls = await _this.getGuildChannelListEx(this.obj.guild_id, true);
         if (!cls) { log.error(`获取频道 ${this.obj.guild_name} 子频道信息失败!`); return false; }
         let l = cls.length, i = 0;
@@ -107,5 +107,9 @@ export class GuildInfo {
      */
     sendMsg(_this: GuildSystem, channel_id: string, msg: Msg_Info[] | string) {
         return _this.sendMsgEx(this.obj.guild_id, channel_id, msg);
+    }
+
+    toString() {
+        return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj, null, 2)}`;
     }
 }

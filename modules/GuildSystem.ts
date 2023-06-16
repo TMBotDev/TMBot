@@ -169,9 +169,9 @@ async function ProcessGuildNotice(this: GuildSystem, obj: obj) {
             let guild = await SafeGetGuild.call(this, obj.guild_id);
             let channel = await SafeGetChannel.call(this, guild, obj.channel_id);
             // console.log(obj)
-            let member = await this.getGuildMemberProfileEx(guild.guild_id, obj.user_id);
+            // let member = await this.getGuildMemberProfileEx(guild.guild_id, obj.user_id);
             // if (!member) { return; }
-            // let member = undefined;
+            let member = undefined;
             let reactionInfos = new ReactionInfos(obj.current_reactions);
             this.events.onChannelMsgReactionUpdated.fire(
                 "GuildSystemProcess_Event_ChannelMsgReactionUpdate",
@@ -242,10 +242,10 @@ export class GuildSystem {
     /** 在主类执行_Init的时候这玩意会自动执行 */
     async _Init() {
         this.log.info(`§l§e----------------`);
-        this.log.info(`开始初始化频道信息...`);
+        let InitMsgLog = this._this.conf["InitMsgLog"];
         if (
-            !(await this._loadSelfProfile()) ||
-            !(await this._loadAllGuildInfo())
+            !(await this._loadSelfProfile(true)) ||
+            !(await this._loadAllGuildInfo(InitMsgLog))
         ) {
             this.log.warn(`初始化频道信息失败!无法使用频道系统!`);
             return false;
@@ -253,26 +253,25 @@ export class GuildSystem {
         this.log.info(`初始化频道信息完成!`);
         return true;
     }
-    async _loadSelfProfile() {
-        this.log.info(`开始获取频道Bot资料...`);
+    async _loadSelfProfile(bool: boolean) {
         let res = await this.getGuildServiceProfile();
         if (res.data != null) {
             this._Profile.nickname = res.data.nickname;
             this._Profile.tiny_id = res.data.tiny_id;
             this._Profile.avatar_url = res.data.avatar_url;
-            this.log.info(`获取频道Bot资料完成`);
+            bool && this.log.info(`获取频道Bot资料完成: (${this._Profile.nickname})`);
             return true;
         }
         this.log.error(`获取频道Bot资料失败`);
         return false;
     }
-    async _loadAllGuildInfo() {
+    async _loadAllGuildInfo(bool: boolean) {
         this._Guilds.clear();
         let list = await this.getGuildListEx();
         let l = list.length, i = 0;
         while (i < l) {
             let guild = list[i];
-            if (!(await guild._init(this))) {
+            if (!(await guild._init(this, bool))) {
                 return false;
             }
             this._Guilds.set(guild.guild_id, guild);
@@ -516,5 +515,9 @@ ${err.stack}
     /** 发送信息到子频道 */
     sendGuildChannelMsg(guild_id: string, channel_id: string, message: string | Msg_Info[]) {
         return this._this._SendReqPro("send_guild_channel_msg", { guild_id, channel_id, message });
+    }
+
+    toString() {
+        return `<Class::${this.constructor.name}>\n${this._this.Name}`;
     }
 }

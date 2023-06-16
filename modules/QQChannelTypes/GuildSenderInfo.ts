@@ -21,4 +21,8 @@ export class GuildSenderInfo {
     getDetail(_this: GuildSystem, guild_id: string, no_cache = false) {
         return _this.getGuildMemberProfileEx(guild_id, this.obj.tiny_id, no_cache);
     }
+
+    toString() {
+        return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj, null, 2)}`;
+    }
 }

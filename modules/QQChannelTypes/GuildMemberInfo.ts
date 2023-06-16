@@ -25,6 +25,10 @@ export class GuildMemberInfo {
     get role_id() { return this.obj.role_id; }
     /** 所在权限组名称 */
     get role_name() { return this.obj.role_name; }
+
+    toString() {
+        return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj, null, 2)}`;
+    }
 }
 
 export class RoleInfo {
@@ -34,6 +38,10 @@ export class RoleInfo {
     }) { }
     get role_id() { return this.obj.role_id; }
     get role_name() { return this.obj.role_name; }
+
+    toString() {
+        return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj, null, 2)}`;
+    }
 }
 
 export class GuildMemberProfileInfo {
@@ -77,5 +85,10 @@ export class GuildMemberProfileInfo {
             i++;
         }
         return;
+    }
+
+
+    toString() {
+        return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj, null, 2)}`;
     }
 }

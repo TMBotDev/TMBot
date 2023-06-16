@@ -25,4 +25,8 @@ export class MessageDB {
         if (this.level == null) { this.Init(); }
         return this.level!.set(`Guild_${msg_id}`, data);
     }
+
+    toString() {
+        return `<Class::${this.constructor.name}>\n${this.dir}`;
+    }
 }

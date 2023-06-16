@@ -41,6 +41,10 @@ export class ReactionInfos {
             now = it.next();
         }
     }
+
+    toString() {
+        return `<Class::${this.constructor.name}>\n${JSON.stringify(this.reactions, null, 2)}`;
+    }
 }
 
 /**
@@ -60,4 +64,8 @@ class ReactionInfo {
     get count() { return this.obj.count; }
     /** BOT是否点击 */
     get clicked() { return this.obj.clicked; }
+
+    toString() {
+        return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj, null, 2)}`;
+    }
 }

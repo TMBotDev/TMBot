@@ -18,4 +18,8 @@ export class SlowModeInfo {
     get speak_frequency() { return this.obj.speak_frequency; }
     /** 单位周期时间, 单位秒}[]	//频道内可用慢速模式类型列表 */
     get slow_mode_circle() { return this.obj.slow_mode_circle; }
+
+    toString() {
+        return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj, null, 2)}`;
+    }
 }

@@ -6,7 +6,7 @@ import { WebsocketClient } from "./WebSocket";
 let allOneBotDockingInstance = new Map<string, OneBotDocking>();
 
 export class BotDockingMgr {
-    static _NewBot(name: string, conn: string, reConnectCount: number, reConnectTime: number, conf: { [key: string]: any }) {
+    protected static _NewBot(name: string, conn: string, reConnectCount: number, reConnectTime: number, conf: { [key: string]: any }) {
         return new Promise<boolean>((resF) => {
             reConnectCount = parseInt(reConnectCount + "");
             reConnectTime = parseInt(reConnectTime + "");

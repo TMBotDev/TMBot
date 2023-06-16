@@ -15,13 +15,12 @@ export class GroupInfo {
         "group_id": number,
         "group_name": string
     }) { }
-    async _init(_this: OneBotDocking) {
-        _this.logger.info(`正在初始化群信息: ${this.obj.group_name}(${this.obj.group_id})...`);
+    async _init(_this: OneBotDocking, bool: boolean = _this.conf["InitMsgLog"]) {
         let val = await _this.getGroupMemberList(this.obj.group_id);
         let data = val.data;
         if (data == null) {
             _this.logger.info(`初始化群信息: ${this.obj.group_name}(${this.obj.group_id}) 失败!`);
-            return;
+            return false;
         }
         (data as any[]).forEach((val) => {
             let memberInfo = new GroupMemberInfo(val);
@@ -34,8 +33,9 @@ export class GroupInfo {
             // logger.info(`- 群成员: ${memberInfo.card || memberInfo.nickname}(${memberInfo.user_id}) 已记录!`);
         });
         let ow = this._Owner!;
-        _this.logger.info(`初始化群成员信息: ${this.obj.group_name}(${this.obj.group_id}) 成功!群主: ${ow.card || ow.nickname}(${ow.user_id}),共计 ${this._Members.size} 个群成员, ${this._Admins.size} 个管理员`);
+        bool && _this.logger.info(`初始化群成员信息: ${this.obj.group_name}(${this.obj.group_id}) 成功!群主: ${ow.card || ow.nickname}(${ow.user_id}),共计 ${this._Members.size} 个群成员, ${this._Admins.size} 个管理员`);
         // logger.info(JSON.stringify(data, null, 2));
+        return true;
     }
     /**
      * 方便函数,快捷发送群消息
