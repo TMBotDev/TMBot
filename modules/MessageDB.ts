@@ -5,6 +5,7 @@ import { MsgTypeInfoEx } from "./QQDataTypes/MsgInfo";
 export class MessageDB {
     public level: LevelDB | undefined;
     constructor(private dir: string) { }
+    get LevelDB() { return this.level; }
     Init() {
         this.level = new LevelDB(this.dir);
     }

@@ -17,6 +17,7 @@ let Level = (() => {//支持LLSE
 export class LevelDB {
     private level: KVDatabase | undefined;
     private level1: {
+        "open": () => Promise<void>
         "put": (k: string, v: string) => Promise<void>,
         "get": (l: string) => Promise<string | undefined>,
         "iterator": () => {
@@ -25,6 +26,7 @@ export class LevelDB {
         "close": () => Promise<void>
 
     } | undefined;
+    private level1IsOpen = false;
     constructor(private location: string) {
         location = FileClass.getStandardPath(location)!;
         if (!location) { throw new Error("获取标准路径失败!"); }
@@ -33,22 +35,31 @@ export class LevelDB {
             return;
         }
         this.level1 = new Level(location, { "createIfMissing": true });
+        allLevelDB.add(this);
     }
     get path() { return this.location; }
     async get<T>(key: string) {
         if (!!this.level) { return this.level.get(key) as T | undefined; }
+        if (!this.level1IsOpen) {
+            await this.level1!.open();
+            this.level1IsOpen = true;
+        }
         let res = await this.level1!.get(key);
         return (!res ? res : JSON.parse(res)) as T | undefined;
     }
-    set(key: string, data: any) {
-        if (!!this.level) { return new Promise<void>((r) => { this.level!.set(key, data); r(); }); }
+    async set(key: string, data: any) {
+        if (!!this.level) { this.level!.set(key, data); return undefined; }
+        if (!this.level1IsOpen) {
+            await this.level1!.open();
+            this.level1IsOpen = true;
+        }
         return this.level1!.put(key, JSON.stringify(data));
     }
     /**
      * @param count 一次next步进多少条数据
      * @note 没有数据了下一次步进将返回空数组
      */
-    getKeyIterator(count: number) {
+    async getKeyIterator(count: number) {
         if (!!this.level) {
             let keys = this.level.listKey();
             let i = 0;
@@ -58,6 +69,10 @@ export class LevelDB {
                 return r;
             };
             return res;
+        }
+        if (!this.level1IsOpen) {
+            await this.level1!.open();
+            this.level1IsOpen = true;
         }
         let iter = this.level1!.iterator();
         let res = async () => {
