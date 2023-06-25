@@ -91,6 +91,7 @@ GlobalEvent.onTMBotStop.on((f) => {
             list.push(db.close());
             now = iter.next();
         }
+        if (list.length == 0) { return; }
         await Promise.all(list);
         levelDBLogger.info(`数据库全部关闭完成!`);
     })());

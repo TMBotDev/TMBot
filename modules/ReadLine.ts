@@ -1,24 +1,23 @@
 import { createInterface } from "readline";
 import { GlobalEvent, GlobalVar } from "./Global";
+import { ConsoleCmd } from "./TMBotCommand";
 
 // let log_ = MainLogger;
 
 export function onReadLineInit() {
     if (typeof (ll) != "undefined") {
-        let isStop = false;
+        let Stopping = false;
         mc.listen("onConsoleCmd", (cmd) => {
-            if (isStop) {
-                if (cmd != "stop") { return false; }
+            if (Stopping) {
+                if (cmd == "stop") { return false; }
                 return true;
             }
             if (cmd.trim() == "stop") {
-                isStop = true;
-                let list: Promise<any>[] = [];
-                GlobalEvent.onTMBotStop.fire("TMBotProcess_Event_StopRequest", null, (pro) => { list.push(pro); });
-                Promise.all(list).then(() => {
+                Stopping = true;
+                (async () => {
+                    await GlobalVar.TMBotStop();
                     mc.runcmd("stop");
-                    // process.exit(0);
-                });
+                })();
                 return false;
             }
             return true;
@@ -29,18 +28,20 @@ export function onReadLineInit() {
         "input": process.stdin,
         "output": process.stdout
     });
-    let isTrue = false;
+    let Stopping = false;
     readline.on("SIGINT", async function () {
-        if (isTrue) {
-            GlobalVar.MainLogger.info("正在请求关闭...");
-            readline.close();
-            let list: Promise<any>[] = [];
-            GlobalEvent.onTMBotStop.fire("TMBotProcess_Event_StopRequest", null, (pro) => { list.push(pro); });
-            await Promise.all(list);
-            process.exit(0);
+        if (Stopping) {
+            GlobalVar.TMBotStop();
+            return;
         }
         GlobalVar.MainLogger.warn("再按一次退出程序!");
-        isTrue = true;
-        setTimeout(() => { isTrue = false; }, 3000);
+        Stopping = true;
+        setTimeout(() => { Stopping = false; }, 3000);
+    });
+    GlobalEvent.onTMBotStop.on(function CloseReadline() {
+        readline.close();
+    });
+    readline.on("line", (input) => {
+        ConsoleCmd.CmdSystem._execute(input || "", ConsoleCmd.CmdRunner, ConsoleCmd.CmdOutput, false);
     });
 }

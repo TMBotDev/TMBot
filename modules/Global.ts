@@ -13,8 +13,8 @@ export namespace GlobalVar {
         "isBeta": boolean,
         "isDebug": boolean
     }
-    export function getErrorFile(err: Error) {
-        let context = err.stack!.split("\n").slice(1)[0];
+    export function getErrorFile(err: Error, stackLine = 0) {
+        let context = err.stack!.split("\n").slice(1)[stackLine];
         if (context.match(/^\s*[-]{4,}$/)) {
             return context;
         }
@@ -44,6 +44,16 @@ export namespace GlobalVar {
             }
         }
         return { isPlugin, name };
+    }
+
+    /** 关闭TMBot(llse环境将不使用process.exit) */
+    export async function TMBotStop() {
+        MainLogger.info("正在请求关闭...");
+        let list: Promise<any>[] = [];
+        GlobalEvent.onTMBotStop.fire("TMBotProcess_Event_StopRequest", null, (pro) => { list.push(pro); });
+        await Promise.all(list);
+        MainLogger.info(`TMBot退出...`);
+        typeof (ll) == "undefined" && process.exit(0);
     }
 };
 

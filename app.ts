@@ -7,6 +7,7 @@ import { JsonConfigFileClass } from "./tools/data";
 // import { LevelDB } from "./tools/leveldb";
 import { Logger } from "./tools/logger";
 import { onReadLineInit } from "./modules/ReadLine";
+import { OffsetException } from "./modules/OffsetException";
 
 let Logo = String.raw`
   ________  _______        __ 
@@ -44,7 +45,8 @@ GlobalVar.TMBotConfig = TMBotConfig;
 process.on("uncaughtException", (err, _ori) => {
     MainLogger.error(`程序出现未捕获的异常:`);
     MainLogger.error(`Stack: ${err.stack}`);
-    let res = GlobalVar.getPluginName(GlobalVar.getErrorFile(err));
+    let off = (!(err instanceof OffsetException)) ? 0 : err.offsetLine;
+    let res = GlobalVar.getPluginName(GlobalVar.getErrorFile(err, off));
     if (res.isPlugin) {
         let package_ = PluginPackage.getPackage(res.name);
         let ver = "v0.0.0";
