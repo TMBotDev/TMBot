@@ -79,13 +79,21 @@ export class TEvent<FUNCTION_T extends (...args: any[]) => any | Promise<any>>{
                 if (isPromise(res)) {
                     (res as Promise<unknown>).catch((e) => {
                         this.log.error(`Error in: ${api}(${funcName})[Promise]`);
-                        this.log.error((e instanceof Error) ? e.stack : e.toString());
+                        if (!(e instanceof Error)) {
+                            this.log.error("未知异常消息: ", e);
+                            return;
+                        }
+                        this.log.error(e.stack);
                         PrintErrorIn(e, this.log);
                     });
                 }
             } catch (e: any) {
                 this.log.error(`Error in: ${api}(${funcName})`);
-                this.log.error((e instanceof Error) ? e.stack : (e as string).toString());
+                if (!(e instanceof Error)) {
+                    this.log.error("未知异常消息: ", e);
+                    return;
+                }
+                this.log.error(e.stack);
                 PrintErrorIn(e, this.log);
             }
             i++;

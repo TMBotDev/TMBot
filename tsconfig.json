@@ -1,7 +1,5 @@
 {
   "compilerOptions": {
-    // "outDir": "./build",
-    "watch": true,
     "target": "ES2022",
     "module": "commonjs",
     "esModuleInterop": true,

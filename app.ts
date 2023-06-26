@@ -44,6 +44,10 @@ GlobalVar.TMBotConfig = TMBotConfig;
 
 process.on("uncaughtException", (err, _ori) => {
     MainLogger.error(`程序出现未捕获的异常:`);
+    if (!(err instanceof Error)) {
+        MainLogger.error("未知异常消息: ", err);
+        return;
+    }
     MainLogger.error(`Stack: ${err.stack}`);
     let off = (!(err instanceof OffsetException)) ? 0 : err.offsetLine;
     let res = GlobalVar.getPluginName(GlobalVar.getErrorFile(err, off));
@@ -120,3 +124,5 @@ async function load() {
 }
 
 load();
+
+setTimeout(() => { throw `aaa` }, 3000)
