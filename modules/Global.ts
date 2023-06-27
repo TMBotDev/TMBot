@@ -6,7 +6,13 @@ import { PLUGIN_DIR } from "./PluginLoader";
 import { TEvent } from "./TEvent";
 
 //逃避tsc编译bug
-declare namespace ll { };
+interface LL { versionString(): string }
+declare class ll { static versionString(): string }
+declare global {
+    /** Global.ts 为逃避编译bug重定义ll接口入口 */
+    var LL: LL | undefined
+}
+global.LL = ll || undefined;
 
 export namespace GlobalVar {
     export let TMBotConfig: JsonConfigFileClass;
@@ -56,7 +62,7 @@ export namespace GlobalVar {
         GlobalEvent.onTMBotStop.fire("TMBotProcess_Event_StopRequest", null, (pro) => { list.push(pro); });
         await Promise.all(list);
         MainLogger.info(`TMBot退出...`);
-        typeof (ll) == "undefined" && process.exit(0);
+        typeof (LL) == "undefined" && process.exit(0);
     }
 };
 
