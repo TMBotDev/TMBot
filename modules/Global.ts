@@ -5,6 +5,9 @@ import { Logger } from "../tools/logger";
 import { PLUGIN_DIR } from "./PluginLoader";
 import { TEvent } from "./TEvent";
 
+//逃避tsc编译bug
+declare namespace ll { };
+
 export namespace GlobalVar {
     export let TMBotConfig: JsonConfigFileClass;
     export let MainLogger: Logger;

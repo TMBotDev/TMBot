@@ -4,6 +4,13 @@ import { ConsoleCmd } from "./TMBotCommand";
 
 // let log_ = MainLogger;
 
+//逃避tsc编译bug
+declare namespace ll { };
+declare namespace mc {
+    export function listen(a: "onConsoleCmd", b: (c: string) => void): boolean;
+    export function runcmd(str: string): boolean;
+};
+
 export function onReadLineInit() {
     if (typeof (ll) != "undefined") {
         let Stopping = false;

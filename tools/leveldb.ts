@@ -14,6 +14,14 @@ let Level = (() => {//支持LLSE
     }
 })();
 
+declare class KVDatabase {
+    constructor(str: string)
+    get(k: string): any
+    set(k: string, v: any): boolean
+    listKey(): string[]
+    close(): boolean
+}
+
 export class LevelDB {
     private level: KVDatabase | undefined;
     private level1: {

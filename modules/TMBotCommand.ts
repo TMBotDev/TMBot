@@ -2,7 +2,8 @@ import { TMBotCmd } from "./CommandSystem";
 import { GlobalVar } from "./Global";
 
 
-
+//逃避tsc编译bug
+declare namespace ll { export function versionString(): string };
 
 let cmdSystem = new TMBotCmd.TMBotCommandSystem("TMBot");
 
