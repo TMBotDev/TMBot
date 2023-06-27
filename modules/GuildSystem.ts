@@ -49,7 +49,7 @@ function SafeGetChannel(this: GuildSystem, guild: GuildInfo, channel_id: string)
             }
         }
         if (!!res) { return ret(res); }
-        logger.error(`获取频道: {${guild.guild_name}} 子频道: ${channel_id} 信息失败!`);
+        this.log.error(`获取频道: {${guild.guild_name}} 子频道: ${channel_id} 信息失败!`);
     });
 }
 

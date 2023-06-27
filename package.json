@@ -7,11 +7,10 @@
     "start": "node app.js"
   },
   "dependencies": {
-    "@types/deasync": "^0.1.2",
     "@types/needle": "^2.5.3",
     "@types/node": "^18.11.9",
     "@types/ws": "^8.5.3",
-    "deasync": "^0.1.28",
+    "level": "^8.0.0",
     "ws": "^8.11.0"
   }
 }

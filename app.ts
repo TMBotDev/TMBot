@@ -125,4 +125,4 @@ async function load() {
 
 load();
 
-setTimeout(() => { throw `aaa` }, 3000)
+// setTimeout(() => { throw `aaa` }, 3000)
