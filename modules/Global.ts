@@ -12,7 +12,7 @@ declare global {
     /** Global.ts 为逃避编译bug重定义ll接口入口 */
     var LL: LL | undefined
 }
-global.LL = ll || undefined;
+global.LL = typeof (ll) == "undefined" ? undefined : ll;
 
 export namespace GlobalVar {
     export let TMBotConfig: JsonConfigFileClass;
