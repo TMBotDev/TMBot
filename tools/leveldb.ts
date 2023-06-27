@@ -9,7 +9,7 @@ let allLevelDB = new Set<LevelDB>();
 let levelDBLogger = new Logger("LevelDB");
 
 let Level = (() => {//支持LLSE
-    if (typeof (ll) == "undefined") {
+    if (typeof (LL) == "undefined") {
         return require("level").Level;
     }
 })();

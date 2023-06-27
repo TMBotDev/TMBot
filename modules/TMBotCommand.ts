@@ -55,11 +55,11 @@ cmdSystem.newCommand("version", "版本信息", CmdPerm)
     .overload([])!((cmd, _runner, out) => {//设置命令重载
         out.success(`TMBot版本: v${GlobalVar.Version.version.join(".")}${GlobalVar.Version.isBeta ? "(Beta)" : ""}`);
         let inLLSE = false;
-        if (typeof (ll) != "undefined") {
+        if (typeof (LL) != "undefined") {
             inLLSE = true;
         }
         out.success(`是否运行于LiteLoader-ScriptEngine: ${inLLSE}`);
-        inLLSE && out.success(`LiteLoader版本: ${ll.versionString()}`);
+        inLLSE && out.success(`LiteLoader版本: ${LL!.versionString()}`);
         cmd.RunningCompleted();
     })
     .setup();//装载命令

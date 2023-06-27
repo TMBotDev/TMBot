@@ -104,7 +104,7 @@ function ReplaceDate(str: string) {
     return str;
 }
 
-let InLLSE = (() => { return typeof (ll) != "undefined"; })();
+let InLLSE = (() => { return typeof (LL) != "undefined"; })();
 
 export class Logger {
     #Title: string; #isSyncOutput: boolean;
