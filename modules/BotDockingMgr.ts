@@ -24,7 +24,7 @@ export class BotDockingMgr {
             wsc.events.onClose.on((_code, _desc) => {
                 if (d.isClosing || wsc.isDestroy) { return; }
                 if (isFirst) {
-                    logger.info(`首次连接失败!将放弃重连!`);
+                    logger.warn(`首次连接失败!将放弃重连!`);
                     wsc.destroy();
                     lock = false;
                 } else {

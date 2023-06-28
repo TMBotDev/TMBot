@@ -1,7 +1,7 @@
 import { dirname } from "path";
 import { JsonConfigFileClass } from "../tools/data";
 import { FileClass } from "../tools/file";
-import { Logger } from "../tools/logger";
+import { $$_LOGGER_SET_LOG_COLOR_, Logger } from "../tools/logger";
 import { PLUGIN_DIR } from "./PluginLoader";
 import { TEvent } from "./TEvent";
 
@@ -63,6 +63,18 @@ export namespace GlobalVar {
         await Promise.all(list);
         MainLogger.info(`TMBot退出...`);
         typeof (LL) == "undefined" && process.exit(0);
+    }
+
+    export let LogColor = new class {
+        private val = true;
+        constructor() { }
+        get hasColor() {
+            return this.val;
+        }
+        setLogColor(bool: boolean) {
+            this.val = bool;
+            $$_LOGGER_SET_LOG_COLOR_(bool);
+        }
     }
 };
 

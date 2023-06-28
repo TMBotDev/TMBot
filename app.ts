@@ -8,6 +8,7 @@ import { JsonConfigFileClass } from "./tools/data";
 import { Logger } from "./tools/logger";
 import { onReadLineInit } from "./modules/ReadLine";
 import { OffsetException } from "./modules/OffsetException";
+import { FileClass } from "./tools/file";
 
 let Logo = String.raw`
   ________  _______        __ 
@@ -73,6 +74,13 @@ ${err.stack}
 //     logger.error(`Stack: ${err.stack}`);
 // });
 
+function ForEachIter<T, TT, TTT>(iters: Iterator<T, TT, TTT>, fn: (val: T, iters: Iterator<T, TT, TTT>) => void) {
+    let iter = iters.next();
+    while (!iter.done) {
+        fn(iter.value, iters);
+        iter = iters.next();
+    }
+}
 
 
 async function delayLoadPlugins() {
@@ -80,11 +88,16 @@ async function delayLoadPlugins() {
 }
 
 async function load() {
+    if (FileClass.exists("./NO_COLOR")) {
+        GlobalVar.LogColor.setLogColor(false);
+        MainLogger.info("无颜色模式...");
+    }
     MainLogger.info(Logo);
-    MainLogger.info(`正在初始化TMBot...`);
+    MainLogger.info(`正在初始化TMBot(v${Version.version.join(".")}${Version.isBeta ? "Beta" : ""})...`);
     MainLogger.info(`开始批量连接OneBot...`);
     let keys = TMBotConfig.getKeys(), l = keys.length, i = 0;
     // console.log(conf.read())
+    let startTime = Date.now();
     while (i < l) {
         let name = keys[i++];
         // console.log(name)
@@ -112,7 +125,7 @@ async function load() {
             } else if (typeof (obj["GuildSystem"]) != "boolean") {
                 throw new TypeError(`GuildSystem(频道系统)参数必须为布尔!`);
             }
-            await class extends BotDockingMgr { static _0xffafdv = this['\x5f\x4e\x65\x77\x42\x6f\x74'] }['\x5f\x30\x78\x66\x66\x61\x66\x64\x76'](name, ws, reConnCount, reConnTime, obj);
+            await class extends BotDockingMgr { static _0xffafdv = (this as any)['\x5f\x4e\x65\x77\x42\x6f\x74'] }['\x5f\x30\x78\x66\x66\x61\x66\x64\x76'](name, ws, reConnCount, reConnTime, obj);
         } catch (e) {
             MainLogger.error(`连接 [${name}] 失败!`);
             MainLogger.error((e as Error).stack);
@@ -120,7 +133,19 @@ async function load() {
     }
     await delayLoadPlugins();
     onReadLineInit();
-    MainLogger.info(`TMBot加载完成!Version: ${Version.version.join(".")}${Version.isBeta ? "Beta" : ""}`);
+    let allPromise: Promise<any>[] = [];
+    ForEachIter(BotDockingMgr.getBotMapIters(), (v) => {
+        let bot = v[1];
+        allPromise.push(new Promise<void>((res) => {
+            let id = bot.events.onInitSuccess.on(() => {
+                res();
+                bot.events.onInitSuccess.un(id);
+            });
+        }));
+    });
+    allPromise.length != 0 && MainLogger.info(`§d--------初始化信息--------`);
+    await Promise.all(allPromise);
+    MainLogger.info(`TMBot加载完成! (${((Date.now() - startTime) / 1000).toFixed(2)}s),输入"help"可查看命令列表`);
 }
 
 load();

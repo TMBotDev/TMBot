@@ -33,9 +33,16 @@ let Colors: { [key: string]: string } = {
     "§": "",         //ESCAPE
 };
 
+let ColorsOld: { [key: string]: string } = {};
+
+Object.keys(Colors).forEach((name) => {
+    ColorsOld[name] = "";
+});
 
 function getColor(...args: string[]): string {
-    return "\u001b[" + args.join(";") + "m";
+    let arg = args.join(";");
+    if (arg == "00") { return ""; }
+    return "\u001b[" + arg + "m";
 }
 
 function AutoReplace(OriText: string, ...args: string[]): string {
@@ -106,6 +113,21 @@ function ReplaceDate(str: string) {
 
 let InLLSE = (() => { return typeof (LL) != "undefined"; })();
 
+let noColor = false;
+
+export function $$_LOGGER_SET_LOG_COLOR_(bool: boolean) {
+    //对 称 美 学
+    if (!noColor) {
+        if (bool) { return; }
+        [Colors, ColorsOld] = [ColorsOld, Colors];
+        noColor = true;
+    } else {
+        if (!bool) { return; }
+        [Colors, ColorsOld] = [ColorsOld, Colors];
+        noColor = false;
+    }
+}
+
 export class Logger {
     #Title: string; #isSyncOutput: boolean;
     #Config: { "Console": { "level": LoggerLevel, "Enable": Boolean }, "File": { "level": LoggerLevel, "path": string }, "Player": { "level": LoggerLevel, "xuid": string } | null | undefined };
@@ -121,10 +143,10 @@ export class Logger {
         this.#Config.Console = { "level": level, "Enable": true };
         this.#Config.File = { "level": level, "path": "" };
         this.#LogOp = (type: LoggerLevel, text: string) => {
-            var NowDateStr = DateToString(new Date());
-            var color: string = "38;2;255;255;255";
-            var plColor: string = "";
-            var typeStr: string = "";
+            let NowDateStr = DateToString(new Date());
+            let color: string = "38;2;255;255;255";
+            let plColor: string = "";
+            let typeStr: string = "";
             switch (type) {
                 case LoggerLevel.Slient: typeStr = "Slient"; return;//不可能
                 case LoggerLevel.Fatal: typeStr = "FATAL"; color = "38;2;255;0;0"; plColor = "§4"; break;
@@ -133,23 +155,24 @@ export class Logger {
                 case LoggerLevel.Info: typeStr = "INFO"; color = "38;2;255;255;255"; plColor = "§f"; break;
                 case LoggerLevel.Debug: typeStr = "DEBUG"; color = "1;38;2;0;255;255"; plColor = "§o"; break;
             }
-            var NoColorLogStr: string = AutoReplace("[{} {}] {} {}",
+            noColor && (color = "00");
+            let NoColorLogStr: string = AutoReplace("[{} {}] {} {}",
                 NowDateStr, typeStr,
                 (this.#Title == "" ? "" : AutoReplace("[{}]", this.#Title)),
                 text
             );
-            var ColorLogStr: string = AutoReplace("{}{} {}{} {}{}{} {}{}",
-                getColor("38", "2", "173", "216", "230"),//TimeColor
+            let ColorLogStr: string = AutoReplace("{}{} {}{} {}{}{} {}{}",
+                getColor(noColor ? "00" : "38;2;173;216;230"),//TimeColor
                 NowDateStr.split(" ")[1],//Time
-                getColor((type == LoggerLevel.Info ? "38;2;0;170;170" : color)),//TypeColor
+                getColor((type == LoggerLevel.Info ? (noColor ? "00" : "38;2;0;170;170") : color)),//TypeColor
                 typeStr,//Type
                 getColor(color),//Msg Color
                 InLLSE ? "[TMBot]" : "",
                 (this.#Title != "" ? `[${this.#Title}]` : ""),//Title
                 text,//Msg
-                getColor("0")//Clear
+                getColor(noColor ? "00" : "0")//Clear
             );
-            var OutputConsoleFunc: () => void = () => {
+            let OutputConsoleFunc: () => void = () => {
                 if (type <= this.#Config.Console.level) {
                     let consoleLog = ColorLogStr;
                     let keys = Object.keys(Colors), l = keys.length, i = 0;
