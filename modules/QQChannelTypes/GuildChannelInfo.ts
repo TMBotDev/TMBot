@@ -1,8 +1,11 @@
-import { OneBotDocking } from "../OneBotDocking";
+import { GuildSystem, OneBotDocking } from "../OneBotDocking";
+import { Msg_Info } from "../QQDataTypes/MsgInfo";
 import { SlowModeInfo } from "./SlowModeInfo";
 
-
-export class ChannelInfo {
+/**
+ * 子频道信息
+ */
+export class GuildChannelInfo {
     private slowModes: SlowModeInfo;
     constructor(private obj: {
         "owner_guild_id": string,	//所属频道ID
@@ -53,11 +56,19 @@ export class ChannelInfo {
     /** 频道内可用慢速模式类型列表 */
     get slow_modes() { return this.slowModes; }
 
-    getGuild(_this: OneBotDocking) {
-        // return _this.guild.
+    /** 获取所属频道 */
+    getGuild(_this: GuildSystem) {
+        return _this.getGuildSync(this.obj.owner_guild_id);
     }
 
-    async sendMsg() {
-
+    /**
+     * 警告！频道消息只支持部分CQ码
+     * * 详情见: [ https://docs.go-cqhttp.org/guild/#%E5%91%BD%E5%90%8D%E8%AF%B4%E6%98%8E ]
+     */
+    sendMsg(_this: GuildSystem, msg: string | Msg_Info[]) {
+        return this.getGuild(_this)!.sendMsg(_this, this.channel_id, msg)
+    }
+    toString() {
+        return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj, null, 2)}`;
     }
 }

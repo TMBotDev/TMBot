@@ -32,4 +32,8 @@ export class GuildMetaInfo {
     get member_count() { return this.obj.member_count; }
     /** 创建者ID */
     get owner_id() { return this.obj.owner_id; }
+
+    toString() {
+        return `<Class::${this.constructor.name}>\n${JSON.stringify(this.obj, null, 2)}`;
+    }
 }

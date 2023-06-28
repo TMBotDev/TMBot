@@ -4,13 +4,19 @@ import { FileClass } from "../tools/file";
 import { Logger } from "../tools/logger";
 import * as child_process from 'child_process';
 
-const PLUGIN_DIR = "./plugins/";
+export const PLUGIN_DIR = "./plugins/";
 
 let allPackage = new Map<string, PluginPackage>();
 
 let logger = new Logger("PluginLoader");
 
 export class PluginPackage {
+    static getPackage(name: string) {
+        return allPackage.get(name);
+    }
+    static getPackageKeysIter() {
+        return allPackage.keys();
+    }
     static async LoadAllPackage() {
         if (!FileClass.exists(PLUGIN_DIR)) {
             logger.info(`插件加载目录不存在!自动创建...`);
@@ -24,12 +30,13 @@ export class PluginPackage {
                 let fullDir = PLUGIN_DIR + dir.name;
                 let tmp = this.loadPlugin(fullDir);
                 if (tmp) {
-                    logger.info(`加载Node包 [${fullDir}] 成功!`);
+                    logger.info(`加载插件包 [${fullDir}] 成功!`);
                 } else {
-                    logger.error(`加载Node包 [${fullDir}] 失败!`);
+                    logger.error(`加载插件包 [${fullDir}] 失败!`);
                 }
             }
         }
+        logger.info(`插件包全部加载完毕!共${allPackage.size}个插件包`);
     }
     static loadPlugin(dir: string) {
         try {
@@ -42,7 +49,7 @@ export class PluginPackage {
             tmp.load();
             return tmp;
         } catch (e) {
-            logger.error(`Error in load plugin: [${dir}]`);
+            // logger.error(`Error in load plugin: [${dir}]`);
             logger.error((e as Error).stack);
             return undefined;
         }
@@ -61,14 +68,8 @@ export class PluginPackage {
         try {
             for (let key in packageObj.dependencies || {}) {
                 let ModuleDir = path.join(this.dir, `node_modules/${key}`);
-                try {
-                    if (!statSync(FileClass.getStandardPath(ModuleDir)!).isDirectory()) {
-                        throw new Error("");
-                    }
-                } catch (_e) {
-                    let e = _e as Error;
-                    e.message = `Node包 [${this.dir}] 加载失败!原因: 此插件的依赖包 [${key}] 未安装!`;
-                    throw e;
+                if (!statSync(FileClass.getStandardPath(ModuleDir)!).isDirectory()) {
+                    throw new Error(`插件包 [${this.dir}] 加载失败!原因: 此插件的依赖包 [${key}] 未安装!`);
                 }
             }
         } catch (_e) {
@@ -87,7 +88,7 @@ export class PluginPackage {
             allPackage.set(this.name, this);
         } catch (_e) {
             let e = _e as Error;
-            e.message = `Node包 [${this.dir}] 加载失败!\n${e.message}`;
+            e.message = `插件包 [${this.dir}] 加载失败!\n${e.name}: ${e.message}`;
             throw e;
         }
     }

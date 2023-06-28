@@ -1,8 +1,7 @@
 import path from "path";
-import { Version } from "../app";
 import { Logger } from "../tools/logger";
 import { WebsocketClient } from "./WebSocket";
-import { Event } from "./Event";
+import { TEvent } from "./TEvent";
 import { AnonymousInfo } from "./QQDataTypes/AnonymousInfo";
 import { DeviceInfo } from "./QQDataTypes/DeviceInfo";
 import { FileInfo } from "./QQDataTypes/FileInfo";
@@ -11,15 +10,15 @@ import { GroupBaseInfo } from "./QQDataTypes/GroupBaseInfo";
 import { GroupInfo } from "./QQDataTypes/GroupInfo";
 import { GroupMemberInfo } from "./QQDataTypes/GroupMemberInfo";
 import { HonorType } from "./QQDataTypes/HonorType";
-import { MsgInfo, MsgInfoEx, Msg_Info } from "./QQDataTypes/MsgInfo";
+import { ForwardNodeData, MsgInfo, MsgInfoEx, Msg_Info } from "./QQDataTypes/MsgInfo";
 import { OfflineFileInfo } from "./QQDataTypes/OfflineFileInfo";
 import { SenderInfo } from "./QQDataTypes/SenderInfo";
 import { StrangerInfo } from "./QQDataTypes/StrangerInfo";
-import { GuildInfo } from "./QQChannelTypes/GuildInfo";
 import { ErrorPrint } from "./ErrorPrint";
-import { GuildMetaInfo } from "./QQChannelTypes/GuildMetaInfo";
-import { ChannelInfo } from "./QQChannelTypes/ChannelInfo";
-import { GuildMemberInfo, GuildMemberProfileInfo } from "./QQChannelTypes/GuildMemberInfo";
+import { ForwardMessageInfo, ForwardMsgs } from "./QQDataTypes/ForwardMessageInfo";
+import { GuildSystem } from "./GuildSystem";
+import { MessageDB } from "./MessageDB";
+import { GlobalVar } from "./Global";
 
 
 // let logger = new Logger("Bot", LoggerLevel.Info);
@@ -58,27 +57,49 @@ export type ret_data_struct = {
 }
 
 
-async function SafeGetGroupInfo(this: OneBotDocking, group_id: number) {
-    let group = this.getGroupInfoSync(group_id);
-    if (group == null) {
-        group = new GroupInfo({
-            "group_id": group_id,
-            "group_name": (await this.getGroupBaseInfoEx(group_id))!.group_name
+export class TMBotPromise<T, TT> extends Promise<T>{
+    private data: TT;
+    constructor(executor: (resolve: (value: T | PromiseLike<T>) => void, reject: (reason?: any) => void, getData: () => TT) => void, defData: TT) {
+        super((resolve, reject) => {
+            executor(resolve, reject, () => {
+                return this.data!;
+            });
         });
-        await group._init(this);
-        this.Groups.set(group.group_id, group);
+        this.data = defData;
     }
-    return group;
+    setData(data: TT) { this.data = data; return this; }
+    getData() { return this.data; }
+}
+
+
+function SafeGetGroupInfo(this: OneBotDocking, group_id: number) {
+    return new Promise<GroupInfo>(async (ret) => {
+        let group = this.getGroupInfoSync(group_id);
+        if (group == null) {
+            let base = await this.getGroupBaseInfoEx(group_id);
+            if (!!base) {
+                group = new GroupInfo({
+                    "group_id": group_id,
+                    "group_name": base.group_name
+                });
+                await group._init(this);
+                this.Groups.set(group.group_id, group);
+            }
+        }
+        if (!!group) { return ret(group); }
+        this.logger.error(`无法获取群聊: {${group}} 信息`);
+    });
 }
 
 /**
  * 截断超出的字符串,阶段部分用"..."表示
+ * @note 自动替换换行消息
  */
 function TruncateString(text: string, size: number) {
     if (text.length > size) {
         text = text.substring(0, size) + "...";
     }
-    return text;
+    return text.replace(/\n/g, "\\n").replace(/\r/g, "\\r");
 }
 
 function CQCodeDataToObj(e: string) {
@@ -94,7 +115,7 @@ function CQCodeDataToObj(e: string) {
 /**
  * 自动替换CQ码
  */
-async function AutoReplaceCQCode(msg: string, _this: OneBotDocking, fn: (name: string, data: obj) => Promise<string>) {
+async function AutoReplaceCQCode(msg: string, fn: (name: string, data: obj) => Promise<string>) {
     let CQCodeIndex = msg.indexOf("[CQ:");
     while (CQCodeIndex != -1) {
         let CCLIndex = CQCodeIndex + 4;
@@ -121,7 +142,7 @@ async function AutoReplaceCQCode(msg: string, _this: OneBotDocking, fn: (name: s
  * 处理OneBot消息
  */
 async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
-    let sender = new SenderInfo(obj.sender);
+    let sender = new SenderInfo({ ...obj.sender, "isGroupMember": obj.message_type == "group" ? true : false, "isGuildMember": obj.message_type == "guild" });
     // console.log(obj.sender);
 
 
@@ -129,6 +150,18 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
         case "private": {
             // console.log(obj)
             let msg = new MsgInfo({ "message": obj.message, "message_id": obj.message_id, "raw_message": obj.raw_message });
+            if (this.conf["GetMsgUseLevelDB"]) {
+                await this._MsgDB.setMsg(msg.msg_id, {
+                    "group": false,
+                    "group_id": undefined,
+                    "message_id": msg.msg_id,
+                    "message": msg.msg,
+                    "message_type": "private",
+                    "real_id": -1,
+                    "sender": obj.sender,
+                    "time": obj.time
+                });
+            }
             // this.MsgIDMap.set(msg.msg_id, msg);
             // console.log(JSON.stringify(obj.raw_message, null, 2));
             this.events.onPrivateMsg.fire(
@@ -139,22 +172,34 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
                 msg
             );
 
-            this.conf["MsgLog"] && this.logger.info(`私聊消息: ${sender.nickname} >> ${await AutoReplaceCQCode(TruncateString(msg.originalContent, 100), this, async (name, _d) => name)}`);
+            this.conf["MsgLog"] && this.logger.info(`私聊消息: ${sender.nickname} >> ${await AutoReplaceCQCode(TruncateString(msg.originalContent, 100), async (name, _d) => name)}`);
             break;
         }
         case "group": {
             let msg = new MsgInfo({ "message": obj.message, "message_id": obj.message_id, "raw_message": obj.raw_message });
-            // this.MsgIDMap.set(msg.msg_id, msg);
 
             let group = await SafeGetGroupInfo.call(this, obj.group_id);
             let member: GroupMemberInfo | AnonymousInfo;
-            // console.log(obj);
+
+            if (this.conf["GetMsgUseLevelDB"]) {
+                await this._MsgDB.setMsg(msg.msg_id, {
+                    "group": true,
+                    "group_id": group.group_id,
+                    "message_id": msg.msg_id,
+                    "message": msg.msg,
+                    "message_type": "group",
+                    "real_id": -1,
+                    "sender": obj.sender,
+                    "time": obj.time
+                });
+            }
 
             if (obj.sub_type == "anonymous") {
                 member = new AnonymousInfo(obj.group_id, obj.anonymous);
             } else {
                 // console.log(sender)
-                member = (await group.refreshMemberInfo(this, sender.user_id))!;
+                member = (await group.refreshMemberInfo(this, sender.user_id)) as any;
+                if (!member) { return; }
                 // member = group.senderGetMember(sender)!;
             }
             this.events.onGroupMsg.fire(
@@ -166,7 +211,7 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
                 msg
             );
             this.conf["MsgLog"] &&
-                this.logger.info(`[${group.group_name}(${group.group_id})] ${sender.nickname} >> ${TruncateString(await AutoReplaceCQCode(msg.originalContent, this, async (name, data) => {
+                this.logger.info(`[${group.group_name}(${group.group_id})] ${sender.nickname} >> ${TruncateString(await AutoReplaceCQCode(msg.originalContent, async (name, data) => {
                     if (name.toLowerCase() == "at") {
                         let user = (await group.refreshMemberInfo(this, +data["qq"]));
                         if (user == null) {
@@ -182,7 +227,7 @@ async function ProcessOneBotMessage(this: OneBotDocking, obj: obj) {
         //     break;
         // }
         case "guild": {
-            ProcessOneBotGuildEvent.call(this, obj);
+            GuildSystem.ProcessOneBotGuildEvent.call(this.guildSystem, obj);
             break;
         }
     }
@@ -196,7 +241,8 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
     switch (obj.notice_type as "group_upload" | "group_admin" | "group_decrease" | "group_increase" | "group_ban" | "group_recall" | "friend_add" | "friend_recall" | "notify" | "group_card" | "offline_file" | "client_status" | "essence" | "message_reactions_updated" | "channel_updated" | "channel_created" | "channel_destroyed") {
         case "group_upload": {
             let group = await SafeGetGroupInfo.call(this, obj.group_id);
-            let member = group.getMember(obj.user_id)!;
+            let member = group.getMember(obj.user_id);
+            if (!member) { return; }
             let file = new FileInfo(obj.file);
             this.events.onGroupUploadFile.fire(
                 "OneBotDockingProcess_Event_GroupUploadFile",
@@ -209,7 +255,30 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
         }
         case "group_admin": {
             let group = await SafeGetGroupInfo.call(this, obj.group_id);
-            let member = group.getMember(obj.user_id)!;
+            let member = group.getMember(obj.user_id);
+            let isUpdate = false;
+            if (!member) {
+                member = await group.refreshMemberInfo(this, obj.user_id);
+                if (!member) { return; }
+                isUpdate = true;
+                member = new GroupMemberInfo({
+                    "group_id": member.group_id,
+                    "user_id": member.user_id,
+                    "nickname": member.nickname,
+                    "card": member.card,
+                    "sex": member.sex,
+                    "age": member.age,
+                    "join_time": member.join_time,
+                    "last_sent_time": member.last_sent_time,
+                    "level": member.level,
+                    "role": obj.sub_type == "set" ? "member" : "admin",
+                    "card_changeable": member.card_changeable,
+                    "title": member.title,
+                    "title_expire_time": member.title_expire_time,
+                    "unfriendly": member.unfriendly,
+                    "shut_up_timestamp": member.shut_up_timestamp
+                });
+            }
             this.events.onGroupAdminChange.fire(
                 "OneBotDockingProcess_Event_GroupAdminChange",
                 obj.time * 1000,
@@ -218,7 +287,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
                 obj.sub_type
             );
             let perms = ["Admin", "Member"];
-            await group.refreshMemberInfo(this, member.user_id);
+            !isUpdate && await group.refreshMemberInfo(this, member.user_id);
             this.conf["NoticeLog"] && this.logger.info(`[${group.group_name} (${group.group_id})]群管理员变动: ${member.card || member.nickname} (${member.user_id}) (${perms[+(obj.sub_type == "set")]}) -> (${perms[+(obj.sub_type == "unset")]})`);
             break;
         }
@@ -245,6 +314,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
                     (group.getAdmins(false) as Map<number, GroupMemberInfo>).delete(member.user_id);
                 }
                 (group.getMembers(false) as Map<number, GroupMemberInfo>).delete(member.user_id);
+                (function (this: GroupInfo) { return this._RefreshMap; }).call(group).delete(member.user_id);
                 this.conf["NoticeLog"] && this.logger.info(`[${group.group_name} (${group.group_id})] 成员 ${member.card || member.nickname} (${member.user_id}) 退出群聊`);
             }
             break;
@@ -281,7 +351,8 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
         }
         case "group_ban": {
             let group = await SafeGetGroupInfo.call(this, obj.group_id);
-            let op = (await group.refreshMemberInfo(this, obj.operator_id))!;
+            let op = (await group.refreshMemberInfo(this, obj.operator_id));
+            if (!op) { return; }
             if (obj.user_id == 0) {
                 this.events.onGroupWholeMute.fire(
                     "OneBotDockingProcess_Event_GroupWholeMute",
@@ -291,7 +362,8 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
                     op
                 );
             } else {
-                let member = (await group.refreshMemberInfo(this, obj.user_id))!;
+                let member = (await group.refreshMemberInfo(this, obj.user_id));
+                if (!member) { return; }
                 this.events.onGroupMute.fire(
                     "OneBotDockingProcess_Event_GroupMute",
                     obj.time * 1000,
@@ -305,8 +377,9 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
         }
         case "group_recall": {
             let group = await SafeGetGroupInfo.call(this, obj.group_id);
-            let member = group.getMember(obj.user_id)!;
-            let op = group.getMember(obj.operator_id)!;
+            let member = await group.refreshMemberInfo(this, obj.user_id);
+            let op = await group.refreshMemberInfo(this, obj.operator_id);
+            if (!member || !op) { return; }
             let msg = await this.getMsgInfoEx(obj.message_id);
             // let msg = this.MsgIDMap.get(obj.message_id);
             if (!msg) {
@@ -348,7 +421,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             break;
         }
         case "notify": {
-            let group = await SafeGetGroupInfo.call(this, obj.group_id);
+            let group = !!obj.group_id ? await SafeGetGroupInfo.call(this, obj.group_id) : undefined;
             switch (obj.sub_type as "poke" | "lucky_king" | "honor") {
                 case "poke": {
                     if (group) {
@@ -400,7 +473,30 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
         }
         case "group_card": {
             let group = await SafeGetGroupInfo.call(this, obj.group_id);
-            let member = group.getMember(obj.user_id)!;
+            let member = group.getMember(obj.user_id);
+            let isUpdate = false;
+            if (!member) {
+                member = await group.refreshMemberInfo(this, obj.user_id);
+                if (!member) { return; }
+                isUpdate = true;
+                member = new GroupMemberInfo({
+                    "group_id": member.group_id,
+                    "user_id": member.user_id,
+                    "nickname": member.nickname,
+                    "card": obj.card_old,
+                    "sex": member.sex,
+                    "age": member.age,
+                    "join_time": member.join_time,
+                    "last_sent_time": member.last_sent_time,
+                    "level": member.level,
+                    "role": member.role,
+                    "card_changeable": member.card_changeable,
+                    "title": member.title,
+                    "title_expire_time": member.title_expire_time,
+                    "unfriendly": member.unfriendly,
+                    "shut_up_timestamp": member.shut_up_timestamp
+                });
+            }
             this.events.onGroupCardChanged.fire(
                 "OneBotDockingProcess_Event_GroupCardChanged",
                 obj.time * 1000,
@@ -408,7 +504,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
                 member,
                 obj.card_new
             );
-            member.card = obj.card_new;
+            !isUpdate && group.refreshMemberInfo(this, member.user_id);
             break;
         }
         case "offline_file": {
@@ -438,8 +534,9 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
             let msg = await this.getMsgInfoEx(obj.message_id);
             // let msg = this.MsgIDMap.get(obj.message_id);
             if (!msg) { return; }
-            let sender = (await group.refreshMemberInfo(this, obj.sender_id))!;
-            let op = (await group.refreshMemberInfo(this, obj.operator_id))!;
+            let sender = (await group.refreshMemberInfo(this, obj.sender_id));
+            let op = (await group.refreshMemberInfo(this, obj.operator_id));
+            if (!sender || !op) { return; }
             this.events.onGroupEssenceMsgChanged.fire(
                 "OneBotDockingProcess_Event_GroupEssenceMsgChanged",
                 obj.time * 1000,
@@ -456,7 +553,7 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
         case "channel_destroyed":
         case "channel_updated":
         case "message_reactions_updated": {
-            ProcessOneBotGuildEvent.call(this, obj);
+            GuildSystem.ProcessOneBotGuildEvent.call(this.guildSystem, obj);
             break;
         }
     }
@@ -492,22 +589,6 @@ async function ProcessOneBotRequest(this: OneBotDocking, obj: obj) {
                 obj.flag
             );
             break;
-        }
-    }
-}
-
-/**
- * 处理OneBot频道事件(各类分支)
- */
-async function ProcessOneBotGuildEvent(this: OneBotDocking, obj: obj) {
-    // console.log(obj)
-    switch (obj.post_type as "message" | "notice") {
-        case "message": {
-
-        }
-        case "notice": {
-
-
         }
     }
 }
@@ -572,57 +653,61 @@ export class OneBotDocking {
 
     private _guildSystem: undefined | GuildSystem = new GuildSystem(this);
 
+    protected _MsgDB: MessageDB;
+
     // public ShareData = new ShareData();
 
     private _events = {
-        "onRawMessage": new Event<(rawInfo: string, ori: (isExecute: boolean, raw: string) => void) => void>(this.DelayLogger),
+        "onRawMessage": new TEvent<(rawInfo: string, ori: (isExecute: boolean, raw: string) => void) => void>(this.DelayLogger),
         /**
          * ```
          * 初始化数据成功
          * 此监听会重复触发,因为重新连接也会初始化一次数据
          * ```
          */
-        "onInitSuccess": new Event<() => void>(this.DelayLogger),
+        "onInitSuccess": new TEvent<() => void>(this.DelayLogger),
         /**
          * 此监听可能会重复触发,因为重连机制
          */
-        "onClientDisconnect": new Event<() => void>(this.DelayLogger),
-        "onClientDestroy": new Event<() => void>(this.DelayLogger),
-        "onClientStatusChanged": new Event<(device: DeviceInfo, online: boolean) => void>(this.DelayLogger),
-        "onPrivateMsg": new Event<(senderInfo: SenderInfo, sub_type: "friend" | "group" | "discuss" | "other", msgInfo: MsgInfo) => void>(this.DelayLogger),
-        "onGroupMsg": new Event<(groupInfo: GroupInfo, sub_type: "normal" | "anonymous" | "notice", groupMemberInfo: GroupMemberInfo | AnonymousInfo, msgInfo: MsgInfo) => void>(this.DelayLogger),
-        // "onDiscussMsg": new Event<(discussInfo: DiscussInfo, senderInfo: SenderInfo, msgInfo: MsgInfo) => void>(),
-        "onGroupUploadFile": new Event<(groupInfo: GroupInfo, groupMemberInfo: GroupMemberInfo, fileInfo: FileInfo) => void>(this.DelayLogger),
-        "onGroupAdminChange": new Event<(groupInfo: GroupInfo, memberInfo: GroupMemberInfo, sub_type: "set" | "unset") => void>(this.DelayLogger),
+        "onClientDisconnect": new TEvent<() => void>(this.DelayLogger),
+        "onClientDestroy": new TEvent<() => void>(this.DelayLogger),
+        "onClientStatusChanged": new TEvent<(device: DeviceInfo, online: boolean) => void>(this.DelayLogger),
+        "onPrivateMsg": new TEvent<(senderInfo: SenderInfo, sub_type: "friend" | "group" | "discuss" | "other", msgInfo: MsgInfo) => void>(this.DelayLogger),
+        "onGroupMsg": new TEvent<(groupInfo: GroupInfo, sub_type: "normal" | "anonymous" | "notice", groupMemberInfo: GroupMemberInfo | AnonymousInfo, msgInfo: MsgInfo) => void>(this.DelayLogger),
+        // "onDiscussMsg": new TEvent<(discussInfo: DiscussInfo, senderInfo: SenderInfo, msgInfo: MsgInfo) => void>(),
+        "onGroupUploadFile": new TEvent<(groupInfo: GroupInfo, groupMemberInfo: GroupMemberInfo, fileInfo: FileInfo) => void>(this.DelayLogger),
+        "onGroupAdminChange": new TEvent<(groupInfo: GroupInfo, memberInfo: GroupMemberInfo, sub_type: "set" | "unset") => void>(this.DelayLogger),
         /**
          * @note leave//主动离开,kick//被踢,//kick_me//登录号被踢
          */
-        "onGroupLeave": new Event<(groupInfo: GroupInfo, sub_type: "leave" | "kick" | "kick_me", memberInfo: GroupMemberInfo, operator: StrangerInfo | undefined) => void>(this.DelayLogger),
-        "onGroupJoin": new Event<(groupInfo: GroupBaseInfo, isInvite: boolean, strangerInfo: StrangerInfo, operator: StrangerInfo | undefined) => void>(this.DelayLogger),
-        "onGroupWholeMute": new Event<(group: GroupInfo, isUnMute: boolean, operator: GroupMemberInfo) => void>(this.DelayLogger),
-        "onGroupMute": new Event<(groupInfo: GroupInfo, isUnMute: boolean, memberInfo: GroupMemberInfo, operator: GroupMemberInfo) => void>(this.DelayLogger),
-        "onGroupRecall": new Event<(groupInfo: GroupInfo, memberInfo: GroupMemberInfo, operator: GroupMemberInfo, msg: MsgInfoEx) => void>(this.DelayLogger),
-        "onFriendAdd": new Event<(strangerInfo: StrangerInfo) => void>(this.DelayLogger),
-        "onFriendRecall": new Event<(friendInfo: FriendInfo, msg: MsgInfoEx) => void>(this.DelayLogger),
-        "onFriendRequestAdd": new Event<(strangerInfo: StrangerInfo, comment: string, flag: string) => void>(this.DelayLogger),
-        "onGroupRequestJoin": new Event<(groupInfo: GroupBaseInfo, isInviteSelf: boolean, strangerInfo: StrangerInfo, comment: string, flag: string) => void>(this.DelayLogger),
-        "onGroupPoke": new Event<(group: GroupInfo, sender: GroupMemberInfo, target: GroupMemberInfo) => void>(this.DelayLogger),
-        "onFriendPoke": new Event<(sender: FriendInfo) => void>(this.DelayLogger),
-        "onGroupRedPacketLuckKing": new Event<(group: GroupInfo, sender: GroupMemberInfo, target: GroupMemberInfo) => void>(this.DelayLogger),
-        "onGroupHonorChanged": new Event<(group: GroupInfo, honor: HonorType, member: GroupMemberInfo) => void>(this.DelayLogger),
-        "onGroupCardChanged": new Event<(group: GroupInfo, member: GroupMemberInfo, card: string) => void>(this.DelayLogger),
-        "onReceiveOfflineFile": new Event<(stranger: StrangerInfo, offlineFile: OfflineFileInfo) => void>(this.DelayLogger),
-        "onGroupEssenceMsgChanged": new Event<(group: GroupInfo, sub_type: "add" | "delete", sender: GroupMemberInfo, operator: GroupMemberInfo, msg: MsgInfoEx) => void>(this.DelayLogger),
+        "onGroupLeave": new TEvent<(groupInfo: GroupInfo, sub_type: "leave" | "kick" | "kick_me", memberInfo: GroupMemberInfo, operator: StrangerInfo | undefined) => void>(this.DelayLogger),
+        "onGroupJoin": new TEvent<(groupInfo: GroupBaseInfo, isInvite: boolean, strangerInfo: StrangerInfo, operator: StrangerInfo | undefined) => void>(this.DelayLogger),
+        "onGroupWholeMute": new TEvent<(group: GroupInfo, isUnMute: boolean, operator: GroupMemberInfo) => void>(this.DelayLogger),
+        "onGroupMute": new TEvent<(groupInfo: GroupInfo, isUnMute: boolean, memberInfo: GroupMemberInfo, operator: GroupMemberInfo) => void>(this.DelayLogger),
+        "onGroupRecall": new TEvent<(groupInfo: GroupInfo, memberInfo: GroupMemberInfo, operator: GroupMemberInfo, msg: MsgInfoEx) => void>(this.DelayLogger),
+        "onFriendAdd": new TEvent<(strangerInfo: StrangerInfo) => void>(this.DelayLogger),
+        "onFriendRecall": new TEvent<(friendInfo: FriendInfo, msg: MsgInfoEx) => void>(this.DelayLogger),
+        "onFriendRequestAdd": new TEvent<(strangerInfo: StrangerInfo, comment: string, flag: string) => void>(this.DelayLogger),
+        "onGroupRequestJoin": new TEvent<(groupInfo: GroupBaseInfo, isInviteSelf: boolean, strangerInfo: StrangerInfo, comment: string, flag: string) => void>(this.DelayLogger),
+        /** 注意!戳一戳消息会上报自身行为! */
+        "onGroupPoke": new TEvent<(group: GroupInfo, sender: GroupMemberInfo, target: GroupMemberInfo) => void>(this.DelayLogger),
+        /** 注意!戳一戳消息会上报自身行为! */
+        "onFriendPoke": new TEvent<(sender: FriendInfo) => void>(this.DelayLogger),
+        "onGroupRedPacketLuckKing": new TEvent<(group: GroupInfo, sender: GroupMemberInfo, target: GroupMemberInfo) => void>(this.DelayLogger),
+        "onGroupHonorChanged": new TEvent<(group: GroupInfo, honor: HonorType, member: GroupMemberInfo) => void>(this.DelayLogger),
+        "onGroupCardChanged": new TEvent<(group: GroupInfo, member: GroupMemberInfo, card: string) => void>(this.DelayLogger),
+        "onReceiveOfflineFile": new TEvent<(stranger: StrangerInfo, offlineFile: OfflineFileInfo) => void>(this.DelayLogger),
+        "onGroupEssenceMsgChanged": new TEvent<(group: GroupInfo, sub_type: "add" | "delete", sender: GroupMemberInfo, operator: GroupMemberInfo, msg: MsgInfoEx) => void>(this.DelayLogger),
         /**
          * 心跳包触发
          * @note interval是心跳包触发时间
          */
-        "onHeartBeat": new Event<(interval: number) => void>(this.DelayLogger),
+        "onHeartBeat": new TEvent<(interval: number) => void>(this.DelayLogger),
         /**
          * 生命周期
          * @note 首次建立连接插件会错过connect生命周期,建议使用onInitSuccess代替connect生命周期
         */
-        "onLifecycle": new Event<(type: "enable" | "disable" | "connect") => void>(this.DelayLogger)
+        "onLifecycle": new TEvent<(type: "enable" | "disable" | "connect") => void>(this.DelayLogger)
     }
 
     public logger: Logger;
@@ -631,8 +716,9 @@ export class OneBotDocking {
         private wsc: WebsocketClient,
         public conf: obj
     ) {
-        this.logger = new Logger(Name, (Version.isDebug ? 5 : 4));
+        this.logger = new Logger(Name, (GlobalVar.Version.isDebug ? 5 : 4));
         this._Init();
+        this._MsgDB = {} as MessageDB;
         if (!!(conf["LogFile"] || "").trim()) {
             this.logger.setFile(path.join("./logs", conf["LogFile"]));
         }
@@ -660,26 +746,22 @@ export class OneBotDocking {
     get Client() { return this.wsc; }
     get events() { return this._events; }
     get LoginInfo() { return { "user_id": this._LoginInfo.user_id, "nickname": this._LoginInfo.nickname }; }
+    /** 不推荐直接使用,此属性为內部API专用 */
     get Groups() { return this._Groups; }
+    /** 不推荐直接使用,此属性为內部API专用 */
     get Friends() { return this._Friends; }
 
     _Init() {
         this._IsInitd = false;
         this._RequestCallbacks = {};
+        let InitMsgLog = this.conf["InitMsgLog"];
         this.wsc.events.onStart.on(async () => {
-            // this.sendMsg("group", 1073980007, "复读机已启动");
-            // this._SendReqPro("get_group_member_list", {
-            //     "group_id": 1073980007
-            // }).then((val) => {
-            //     console.log(val);
-
-            // });
-            if ((await this._loadLoginInfo()) &&
-                (await this._loadFriends()) &&
-                (await this._loadGroupsInfo())) {
+            if ((await this._loadLoginInfo(true)) &&
+                (await this._loadFriends(InitMsgLog)) &&
+                (await this._loadGroupsInfo(InitMsgLog))) {
+                if (!this.conf["GuildSystem"] || !(await this._guildSystem!._Init())) { this._guildSystem = undefined; }
                 this._events.onInitSuccess.fire("OneBotDockingProcess_Event_InitSuccess", null);
                 this.logger.info(`基础信息初始化成功!`);
-                if (!this.conf["ChannelSystem"] || !this._guildSystem!._Init()) { this._guildSystem = undefined; }
                 this._IsInitd = true;
             } else {
                 this.logger.fatal(`基础信息初始化失败!`);
@@ -773,7 +855,7 @@ export class OneBotDocking {
         }, 100);
     }
 
-    _SendRequest(type: string, params: { [key: string]: any }, func: (obj: ret_data_struct) => void) {
+    _SendRequest(type: string, params: { [key: string]: any }, func: (obj: ret_data_struct) => void, onError = (_data: obj) => true, err = new Error("Error Stack")) {
         let oriFunc = func;
         let id = Math.random().toString(16).slice(2);
         let content = JSON.stringify({
@@ -781,11 +863,10 @@ export class OneBotDocking {
             "params": params,
             "echo": id
         });
-        let err = new Error("Error Stack");
         func = (obj) => {
             if (obj.msg != null) {
                 this.logger.error(`API [${type}] 调用错误回执: ${obj.msg}(${obj.wording})`);
-                if (obj.msg != "API_ERROR") {
+                if ((obj.msg != "API_ERROR") && onError(obj)) {
                     ErrorPrint(`Use_OneBot_Websocket_API: ${type}`, `${obj.msg}(${obj.wording!})`, `发送数据:
 \`\`\`json
 ${content}
@@ -809,30 +890,34 @@ ${err.stack}
         this.wsc.send(content);
     }
     _SendReqPro(type: string, params: { [key: string]: any }) {
-        let pro = new Promise<ret_data_struct>((outMsg, outErr) => {
+        let pro = new TMBotPromise<ret_data_struct, boolean>((outMsg, outErr, getData) => {
             this._SendRequest(type, params, (obj) => {
                 outMsg(obj);
+            }, (data) => {
+                outErr(data);
+                return getData();
             });
-        });
+        }, true);
         return pro;
     }
 
-    async _loadLoginInfo() {
+    async _loadLoginInfo(bool: boolean) {
         let val = await this.getLoginInfo();
         let data = val.data;
         if (data == null) {
-            this.logger.error(`登录号信息获取失败!`);
+            bool && this.logger.error(`登录号信息获取失败!`);
             return false;
         }
         this._LoginInfo = {
             "user_id": data.user_id,
             "nickname": data.nickname
         }
-        this.logger.info(`登陆号信息获取完成: ${data.nickname} (${data.user_id})`);
+        this._MsgDB = new MessageDB(`./data/MsgInfo/${this._LoginInfo.user_id}`);
+        bool && this.logger.info(`登陆号信息获取完成: ${data.nickname} (${data.user_id})`);
         return true;
     }
-    async _loadFriends() {
-        this.logger.info("正在加载好友列表...");
+    async _loadFriends(bool: boolean) {
+        bool && this.logger.info("正在加载好友列表...");
         this._Friends.clear();
         let val = await this.getFriendList();
         let data = val.data as ({
@@ -842,36 +927,37 @@ ${err.stack}
             "remark": string
         }[]) | null;
         if (data == null) {
-            this.logger.error("获取好友列表失败!");
+            bool && this.logger.error("获取好友列表失败!");
             return false;
         } else {
             let i = 0;
             data.forEach((val) => {
                 this._Friends.set(val.user_id, new FriendInfo(val));
-                this.logger.info(`加载好友: ${val.remark || val.nickname} (${val.user_id})`);
+                bool && this.logger.info(`加载好友: ${val.remark || val.nickname} (${val.user_id})`);
                 i++;
             });
-            this.logger.info(`加载完成!共 ${i} 个好友!`);
+            bool && this.logger.info(`加载完成!共 ${i} 个好友!`);
         }
         return true;
     }
-    async _loadGroupsInfo() {
-        this.logger.info("正在加载群聊信息...");
+    async _loadGroupsInfo(bool: boolean) {
+        bool && this.logger.info("正在加载群聊信息...");
         this._Groups.clear();
         let val = await this.getGroupList();
         let data = val.data as any[] | null;
         if (data == null) {
-            this.logger.error(`获取群聊列表失败!`);
+            bool && this.logger.error(`获取群聊列表失败!`);
             return false;
         }
         for (let i = 0, l = data.length; i < l; i++) {
             let val = data[i];
             if (!this._Groups.has(val.group_id)) {
                 let groupInfo = new GroupInfo(val);
-                await groupInfo._init(this);
+                if (!(await groupInfo._init(this, bool))) { return false; };
                 this._Groups.set(groupInfo.group_id, groupInfo);
             }
         }
+        this.logger.info(`群聊信息初始化完毕,共${data.length}个群`);
         return true;
     }
 
@@ -888,7 +974,7 @@ ${err.stack}
     }
 
     async RefreshAllFriendInfo() {
-        let data = (await this.getFriendList()).data as ({
+        let data = (await this.getFriendList().setData(false)).data as ({
             "ClassType": "FriendData",
             "user_id": number,
             "nickname": string,
@@ -907,7 +993,7 @@ ${err.stack}
     }
 
     async getGroupBaseInfoEx(group_id: number) {
-        let data = (await this.getGroupInfo(group_id, true)).data;
+        let data = (await this.getGroupInfo(group_id, true).setData(false)).data;
         if (!data) {
             this.logger.error(`获取群聊 ${group_id} 基础信息失败!`);
             return;
@@ -916,7 +1002,7 @@ ${err.stack}
     }
 
     async getStrangerInfoEx(user_id: number, no_cache: boolean = true) {
-        let val = await this.getStrangerInfo(user_id, no_cache);
+        let val = await (this.getStrangerInfo(user_id, no_cache).setData(false));
         let data = val.data;
         if (data == null) {
             this.logger.error(`获取陌生人 ${user_id} 信息失败!`);
@@ -926,7 +1012,7 @@ ${err.stack}
     }
 
     async getGroupMemberInfoEx(group_id: number, user_id: number, no_cache: boolean = true) {
-        let val = await this.getGroupMemberInfo(group_id, user_id, no_cache);
+        let val = await (this.getGroupMemberInfo(group_id, user_id, no_cache));
         let data = val.data;
         if (data == null) {
             this.logger.error(`获取群 ${group_id} 成员 ${user_id} 信息失败!`);
@@ -937,7 +1023,7 @@ ${err.stack}
     }
 
     async sendMsgEx(type: "private" | "group" | 0 | 1, id: number, msg: Msg_Info[] | string, auto_escape: boolean = false) {
-        let res = await this.sendMsg(type, id, msg, auto_escape);
+        let res = await (this.sendMsg(type, id, msg, auto_escape).setData(false));
         if (res.data == null) {
             this.logger.error(`发送消息至 ${type == 0 ? "private" : type == 1 ? "group" : type}(${id}) 失败!`);
             return;
@@ -945,15 +1031,63 @@ ${err.stack}
         return res.data.message_id as number;
     }
 
-    /** 获取聊天消息(频道消息请使用OneBotDocking.guild.getMsgEx获取) */
+    /** 获取聊天消息(频道消息请使用OneBotDocking.guildSystem.getMsgEx获取) */
     async getMsgInfoEx(msg_id: number) {
         let data = (await this.getMsg(msg_id)).data;
         // console.log(data);
         if (!data) {
-            this.logger.error(`获取QQ消息信息失败!`);
-            return null;
+            return new MsgInfoEx(data);
         }
-        return new MsgInfoEx(data);
+        return undefined;
+    }
+
+    /**
+     * 删除好友加强版
+     * @returns -1为没有此好友0为删除失败1表示成功
+     */
+    async deleteFriendEx(user_id: number) {
+        if (!this._Friends.has(user_id)) { return -1; }
+        await this.deleteFriend(user_id);//由于没有返回数据,所以只等待执行完毕
+        await new Promise((r) => { setTimeout(r, 2000); });//sleep 2s
+        await this.RefreshAllFriendInfo();
+        return +!this._Friends.has(user_id);
+    }
+
+    /** 获取合并转发消息 */
+    async getForwardMsgEx(id: string) {
+        let data = await this.getForwardMsg(id);
+        if (data.data != null) {
+            return new ForwardMessageInfo(data.data);
+        }
+        return undefined;
+    }
+
+    /**发送转发消息至群 */
+    async sendGroupForwardMsgEx(group_id: number, messages: ForwardNodeData[]) {
+        let res = await this.sendGroupForwardMsg(group_id, messages);
+        if (res.data != null) {
+            return {
+                /**消息ID */
+                "message_id": res.data.message_id as number,
+                /**转发消息 ID */
+                "forward_id": res.data.forward_id as string
+            };
+        }
+        return undefined;
+    }
+
+    /**发送转发消息至私聊 */
+    async sendPrivateForwardMsgEx(group_id: number, messages: ForwardNodeData[]) {
+        let res = await this.sendPrivateForwardMsg(group_id, messages);
+        if (res.data != null) {
+            return {
+                /**消息ID */
+                "message_id": res.data.message_id as number,
+                /**转发消息 ID */
+                "forward_id": res.data.forward_id as string
+            };
+        }
+        return undefined;
     }
 
     //#region API
@@ -981,10 +1115,54 @@ ${err.stack}
         return this._SendReqPro("delete_msg", { "message_id": msg_id });
     }
     getMsg(msg_id: number) {
-        return this._SendReqPro("get_msg", { "message_id": msg_id });
+        let err = new Error("Error Stack");
+        return new TMBotPromise<ret_data_struct, boolean>(async (ret, rj, getData) => {
+            if (this.conf["GetMsgUseLevelDB"]) {
+                let data = await this._MsgDB.getMsg(msg_id);
+                let res: ret_data_struct = {
+                    "message": !data ? `没有找到消息: ${msg_id}` : "",
+                    "data": data as any,
+                    "status": "ok",
+                    "retcode": 0,
+                    "msg": "GET_MSG_API_ERROR",
+                    "wording": !data ? `没有找到消息: ${msg_id}` : undefined
+                };
+                if (!data) {
+                    rj(res);
+                    this.logger.error(`LevelDB [get_msg] 调用错误回执: ${res.msg}(${res.wording})`);
+                    if (getData()) {
+                        ErrorPrint(`On_LevelDB_Get_Msg`, `${res.msg}(${res.wording!})`, `发送数据:
+\`\`\`json
+${{ "message_id": msg_id }}
+\`\`\`
+调用堆栈:
+\`\`\`txt
+${err.stack}
+\`\`\``, this.logger);
+
+                    }
+                }
+                ret(res);
+                return;
+            }
+            this._SendRequest("get_msg", { "message_id": msg_id }, (v) => {
+                ret(v);
+            }, (data) => {
+                rj(data);
+                return getData();
+            }, err);
+        }, true);
     }
-    getForwardMsgs(id: string) {
+    getForwardMsg(id: string) {
         return this._SendReqPro("get_forward_msg", { "message_id": id });
+    }
+    /** 向群聊发送合并转发消息 */
+    sendGroupForwardMsg(group_id: number, messages: ForwardNodeData[]) {
+        return this._SendReqPro("send_group_forward_msg", { group_id, messages });
+    }
+    /** 向好友发送合并转发消息 */
+    sendPrivateForwardMsg(user_id: number, messages: ForwardNodeData[]) {
+        return this._SendReqPro("send_private_forward_msg", { user_id, messages });
     }
     /**
      * @param user_id 
@@ -1101,6 +1279,10 @@ ${err.stack}
     }
     getFriendList() {
         return this._SendReqPro("get_friend_list", {});
+    }
+    /** 删除好友 */
+    deleteFriend(user_id: number) {
+        return this._SendReqPro("delete_friend", { user_id });
     }
     getUnidirectionalFriendList() {
         return this._SendReqPro("get_unidirectional_friend_list", {});
@@ -1307,8 +1489,8 @@ ${err.stack}
     getOnlineClients(no_cache: boolean = false) {
         return this._SendReqPro("get_online_clients", { no_cache });
     }
-    getGroupMsgHistory(group_id: number) {
-        return this._SendReqPro("get_group_msg_history", { group_id });
+    getGroupMsgHistory(group_id: number, message_seq: number) {
+        return this._SendReqPro("get_group_msg_history", { group_id, message_seq });
     }
     setEssenceMsg(message_id: number) {
         return this._SendReqPro("set-essence_msg", { message_id });
@@ -1349,225 +1531,9 @@ ${err.stack}
     }
     //#endregion
 
-}
 
-
-export class GuildSystem {
-    private _Profile = { "nickname": "Unknown", "tiny_id": "-1", "avatar_url": "" }
-    private _Guilds = new Map<string, GuildInfo>();
-    constructor(protected _this: OneBotDocking) { }//这里的运行时间在主类初始化之前
-    private get log() { return this._this.logger; }
-    /** 在主类执行_Init的时候这玩意会自动执行 */
-    async _Init() {
-        this.log.info(`§l§e----------------`);
-        this.log.info(`开始初始化频道信息...`);
-        if (
-            !(await this._loadSelfProfile()) ||
-            !(await this._loadAllGuildInfo())
-        ) {
-            this.log.warn(`初始化频道信息失败!无法使用频道系统!`);
-            return false;
-        }
-        // let list = await this.getGuildListEx();
-        // let mems = await this.getGuildMemberListEx(list[0].guild_id);
-        // let res = await this.getGuildMemberProfileEx(list[0].guild_id, mems?.members[0].user_id!);
-        // let msgId = await this._this.sendMsgEx(1, 980444970, "[CQ:at,qq=2847696890] 测试", false);
-        // let msg = await this._this.getMsgInfoEx(msgId);
-        // this.log.info(msg?.toMsgInfo().raw);
-        this.log.info(`初始化频道信息完成!`);
-        return true;
-    }
-    async _loadSelfProfile() {
-        this.log.info(`开始获取频道Bot资料...`);
-        let res = await this.getGuildServiceProfile();
-        if (res.data != null) {
-            this._Profile.nickname = res.data.nickname;
-            this._Profile.tiny_id = res.data.tiny_id;
-            this._Profile.avatar_url = res.data.avatar_url;
-            this.log.info(`获取频道Bot资料完成`);
-            return true;
-        }
-        this.log.error(`获取频道Bot资料失败`);
-        return false;
-    }
-    async _loadAllGuildInfo() {
-        this._Guilds.clear();
-        let list = await this.getGuildListEx();
-        let l = list.length, i = 0;
-        while (i < l) {
-            let guild = list[i];
-            if (!(await guild._init(this))) {
-                return false;
-            }
-            this._Guilds.set(guild.guild_id, guild);
-            i++;
-        }
-        return true;
-    }
-
-
-    get OneBotDocking() { return this._this; }
-
-    /** 
-     * ```
-     * 没有加入任何讨论组返回空数组 
-     * 加强版(自动转换类型)
-     * ```
-     */
-    async getGuildListEx() {
-        let res = await this.getGuildList();
-        let arr: GuildInfo[] = [];
-        if (res.data == null) { return arr; }
-        let i = 0, l = res.data.length;
-        while (i < l) {
-            arr.push(new GuildInfo(res.data[i]));
-            i++;
-        }
-        return arr;
-    }
-
-    /** 
-     * ```
-     * 通过访客方式获取频道元数据
-     * go-cqhttp v1.0.1无法使用
-     * 加强版(自动转换类型)
-     * ```
-     */
-    async getGuildMetaByGuestEx(guild_id: string) {
-        let res = await this.getGuildMetaByGuest(guild_id);
-        if (res.data == null) {
-            this.log.error(`获取频道 ${guild_id} 元数据失败!`);
-            return;
-        }
-        return new GuildMetaInfo(res.data);
-    }
-
-    /**
-     * ```
-     * 获取子频道列表
-     * 加强版(自动转换类型)
-     * ```
-     */
-    async getGuildChannelListEx(guild_id: string, no_cache = false) {
-        let res = await this.getGuildChannelList(guild_id, no_cache);
-        if (res.data == null) {
-            this.log.error(`获取频道 ${guild_id} 子频道列表失败!`);
-            return;
-        }
-        let arr: ChannelInfo[] = [];
-        let l = res.data.length, i = 0;
-        while (i < l) {
-            arr.push(new ChannelInfo(res.data[i]));
-            i++;
-        }
-        return arr;
-    }
-
-    /**
-     * ```
-     * 获取频道成员列表
-     * 加强版(自动转换类型)
-     * ```
-     */
-    async getGuildMemberListEx(guild_id: string) {
-        let w = async (nextToken?: string) => {
-            let res = await this.getGuildMemberList(guild_id, nextToken);
-            if (res.data == null) {
-                this.log.error(`无法获取频道 ${guild_id} 成员列表!`);
-                return;
-            }
-            let { members, finished, next_token } = res.data;
-            let mems: GuildMemberInfo[] = [];
-            let l = members.length, i = 0;
-            while (i < l) {
-                mems.push(new GuildMemberInfo(members[i]));
-                i++;
-            }
-            if (finished) {
-                return {
-                    "finished": finished,
-                    "next": undefined,
-                    "token": undefined,
-                    "members": mems
-                }
-            } else {
-                return {
-                    "finished": finished,
-                    "next": async () => {
-                        return await w(next_token);
-                    },
-                    "token": next_token,
-                    "members": mems
-                }
-            }
-        }
-        return await w();
-    }
-
-    /**
-     * ```
-     * 单独获取频道成员信息
-     * 加强版(自动转换类型)
-     * ```
-     */
-    async getGuildMemberProfileEx(guild_id: string, tiny_id: string) {
-        let res = await this.getGuildMemberProfile(guild_id, tiny_id);
-        if (res.data == null) {
-            this.log.error(`获取频道 ${guild_id} 成员 ${tiny_id} 信息失败!`);
-            return;
-        }
-        return new GuildMemberProfileInfo(res.data);
-    }
-
-    /** 
-     * ```
-     * 发送频道消息
-     * 加强版(自动转换类型) 
-     * ```
-     */
-    async sendMsgEx(guild_id: string, channel_id: string, msg: Msg_Info[] | string) {
-        let res = await this.sendGuildChannelMsg(guild_id, channel_id, msg);
-        if (res.data == null) {
-            this.log.error(`发送频道 ${guild_id}(${channel_id}) 消息失败!`);
-            return;
-        }
-        return res.data.message_id as string;
-    }
-
-
-    /**
-     * 获取频道系统内BOT的资料
-     */
-    getGuildServiceProfile() {
-        return this._this._SendReqPro("get_guild_service_profile", {});
-    }
-    /**
-     * 获取已加入频道列表
-     */
-    getGuildList() {
-        return this._this._SendReqPro("get_guild_list", {});
-    }
-    /** 通过访客方式获取频道元数据(暂不可用) */
-    getGuildMetaByGuest(guild_id: string) {
-        return this._this._SendReqPro("get_guild_meta_by_guest", { guild_id });
-    }
-    /** 获取子频道列表 */
-    getGuildChannelList(guild_id: string, no_cache: boolean) {
-        return this._this._SendReqPro("get_guild_channel_list", { guild_id, no_cache });
-    }
-    /** 获取频道成员列表 */
-    getGuildMemberList(guild_id: string, next_token?: string | undefined) {
-        let obj: obj = { guild_id };
-        if (!!next_token) { obj["next_token"] = next_token; }
-        return this._this._SendReqPro("get_guild_member_list", obj);
-    }
-    /** 单独获取频道成员信息 */
-    getGuildMemberProfile(guild_id: string, user_id: string) {
-        return this._this._SendReqPro("get_guild_member_profile", { guild_id, user_id });
-    }
-    /** 发送信息到子频道 */
-    sendGuildChannelMsg(guild_id: string, channel_id: string, message: string | Msg_Info[]) {
-        return this._this._SendReqPro("send_guild_channel_msg", { guild_id, channel_id, message });
+    toString() {
+        return `<Class::${this.constructor.name}>\n${this.Name}`;
     }
 }
 
@@ -1584,5 +1550,7 @@ export {
     MsgInfo,
     OfflineFileInfo,
     SenderInfo,
-    StrangerInfo
+    StrangerInfo,
+    ForwardNodeData,
+    GuildSystem
 };

@@ -1,6 +1,6 @@
-import { Version } from "../app";
 import { FileClass } from "../tools/file";
 import { Logger } from "../tools/logger";
+import { GlobalVar } from "./Global";
 
 
 
@@ -11,7 +11,7 @@ export function ErrorPrint(name: string, msg: string, data: string, logger?: Log
     let txt = [
         `# TMBot错误日志:`,
         `### 错误时间: ${fileName}`, ``,
-        `#### Version: ${Version.version.join(".")}${Version.isBeta ? "Beta" : ""}`, ``,
+        `#### Version: ${GlobalVar.Version.version.join(".")}${GlobalVar.Version.isBeta ? "Beta" : ""}`, ``,
         `## 错误名称:`,
         name, ``,
         `## 错误信息:`,

@@ -1,7 +1,24 @@
 import { isPromise } from "util/types";
 import { Logger } from "../tools/logger";
+import { GlobalVar } from "./Global";
+import { PluginPackage } from "./PluginLoader";
 
-export class Event<FUNCTION_T extends (...args: any[]) => any | Promise<any>>{
+function PrintErrorIn(e: Error, log: { "error": (...args: any[]) => void }) {
+    let ErrorFile = GlobalVar.getErrorFile(e);
+    let res = GlobalVar.getPluginName(ErrorFile);
+    let package_ = PluginPackage.getPackage(res.name);
+    let ver = "v0.0.0";
+    if (package_) {
+        ver = package_.version || ver;
+        ver[0].toLowerCase() != "v" ? ver = "v" + ver : "";
+    } else {
+        ver = `v${GlobalVar.Version.version.join(".")}${GlobalVar.Version.isBeta ? "Beta" : ""}`;
+    }
+    console.log(ver)
+    log.error(`In ${res.isPlugin ? "Plugin" : "File"}: ${res.name}[${ver}]`);
+}
+
+export class TEvent<FUNCTION_T extends (...args: any[]) => any | Promise<any>>{
     private num = 0;
     constructor(
         private log: Logger | { "error": (...args: any[]) => any },
@@ -62,14 +79,26 @@ export class Event<FUNCTION_T extends (...args: any[]) => any | Promise<any>>{
                 if (isPromise(res)) {
                     (res as Promise<unknown>).catch((e) => {
                         this.log.error(`Error in: ${api}(${funcName})[Promise]`);
-                        this.log.error((e instanceof Error) ? e.stack : e.toString());
+                        if (!(e instanceof Error)) {
+                            this.log.error("未知异常消息: ", e);
+                            return;
+                        }
+                        this.log.error(e.stack);
+                        PrintErrorIn(e, this.log);
                     });
                 }
-            } catch (e) {
+            } catch (e: any) {
                 this.log.error(`Error in: ${api}(${funcName})`);
-                this.log.error((e instanceof Error) ? e.stack : (e as string).toString());
+                if (!(e instanceof Error)) {
+                    this.log.error("未知异常消息: ", e);
+                    return;
+                }
+                this.log.error(e.stack);
+                PrintErrorIn(e, this.log);
             }
             i++;
         }
     }
+
+    toString() { return `<Class::TEvent>`; }
 }
