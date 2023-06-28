@@ -88,6 +88,12 @@ async function delayLoadPlugins() {
 }
 
 async function load() {
+    if (process.argv.indexOf("-syncVer")) {
+        let json = JSON.parse(FileClass.readFrom("./package.json")!);
+        json["version"] = Version.version.join(".");
+        FileClass.writeTo("./package.json", JSON.stringify(json, null, 2));
+        return;
+    }
     if (FileClass.exists("./NO_COLOR")) {
         GlobalVar.LogColor.setLogColor(false);
         MainLogger.info("无颜色模式...");
