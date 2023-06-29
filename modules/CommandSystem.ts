@@ -541,13 +541,11 @@ export namespace TMBotCmd {
                 if (canHasMandatory) {
                     canHasMandatory = param.isMandatory;
                 } else if (param.isMandatory) {
-                    logger.warn(`命令: "${this.cmd}" 注册指令重载失败!原因:在非必须参数出现后就不可出现必须参数了!`);
-                    return undefined;
+                    throw new OffsetException(1, `命令: "${this.cmd}" 注册指令重载失败!原因:在非必须参数出现后就不可出现必须参数了!`);
                 }
                 if (param instanceof CommandParams.RawText) {
                     if (!!params[(i + 1)]) {
-                        logger.warn(`命令: "${this.cmd}" 注册指令重载失败!原因:在RawText之后不能有任何参数了!`);
-                        return undefined;
+                        throw new OffsetException(1, `命令: "${this.cmd}" 注册指令重载失败!原因:在RawText之后不能有任何参数了!`);
                     }
                 }
                 i++;
@@ -652,7 +650,7 @@ export namespace TMBotCmd {
             this.helpCmd = cmdSystem.newCommand(`help`, `命令帮助`, { "isEligible": () => true } as TMBotCommandPerm<any>);
             this.helpCmd.setAlias("?");
 
-            this.helpCmd.overload([])!((cmd, _runner, out, _params) => {
+            this.helpCmd.overload([])((cmd, _runner, out, _params) => {
                 let arr = MapMap(this.cache)[1];
                 let content = ([] as string[]).concat(...arr);
                 let pages = splitArr(content, 7);
@@ -665,7 +663,7 @@ export namespace TMBotCmd {
                 cmd.RunningCompleted();
             });
 
-            this.helpCmd.overload([new CommandParams.Number("Page", false)])!((cmd, _runner, out, params) => {
+            this.helpCmd.overload([new CommandParams.Number("Page", false)])((cmd, _runner, out, params) => {
                 let arr = MapMap(this.cache)[1];
                 let content = ([] as string[]).concat(...arr);
                 let pages = splitArr(content, 7);
@@ -682,7 +680,7 @@ export namespace TMBotCmd {
                 cmd.RunningCompleted();
             });
 
-            this.helpCmd.overload([new CommandParams.String("cmd")])!((cmd, _runner, out, params) => {
+            this.helpCmd.overload([new CommandParams.String("cmd")])((cmd, _runner, out, params) => {
                 let nowSelCmd = params[0].value!;
                 let res = this.list.get(nowSelCmd);
                 if (!res) {
