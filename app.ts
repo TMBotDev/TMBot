@@ -91,7 +91,13 @@ async function load() {
     if (process.argv.indexOf("-syncVer")) {
         let json = JSON.parse(FileClass.readFrom("./package.json")!);
         json["version"] = Version.version.join(".");
-        FileClass.writeTo("./package.json", JSON.stringify(json, null, 2));
+        let str = JSON.stringify(json, null, 2);
+        if (FileClass.writeTo("./package.json", str)) {
+            MainLogger.warn(`package.json version changed to ${json["version"]}`);
+        } else {
+            MainLogger.error(`Change package.json Version Fail!`);
+        }
+        MainLogger.warn(str);
         return;
     }
     if (FileClass.exists("./NO_COLOR")) {
