@@ -20,6 +20,9 @@ jobs:
         run: |
           mkdir TMBot
           tsc --outDir ./TMBot/ -watch false
+          cd TMBot
+          node app.js -syncVer
+          cd ..
       - name: Copy Files
         run: |
           cp TMBotStart.exe ./TMBot/

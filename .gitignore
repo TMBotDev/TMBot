@@ -7,3 +7,5 @@ config
 logs
 package-lock.json
 *.js
+data/*
+*.map
