@@ -593,7 +593,6 @@ async function ProcessOneBotRequest(this: OneBotDocking, obj: obj) {
     }
 }
 
-
 /**
  * 处理OneBot元数据
  */

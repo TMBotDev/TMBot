@@ -1,12 +1,8 @@
 # TMBot Release Note
 
-
 #### Version v1.0.9
 
 ## 更新描述：
-[修复好友戳一戳事件触发异常，添加deleteFriend(删除好友)API](https://github.com/TMBotDev/TMBot/commit/bb0a3d7244d4fcfa97b0934fc3348aefcfd561d2)
-
-[为MsgInfo添加msgInfoArray属性，完善一些MsgInfoBuilder](https://github.com/TMBotDev/TMBot/commit/86503032b9dbe6d4dfddb17e0357cd66834079ec)
 
 [添加,添加,添加,完善](https://github.com/TMBotDev/TMBot/commit/3ca2bf3fb158a66c81492602fe8e3ebec8b87bc5) 
 1.添加ForwardMessageInfo类
@@ -14,6 +10,7 @@
 3.为SenderInfo类添加属性 _isGroupMember, _isGuildMember
 4.完善ForwardNode类
 5.完善MsgInfoBuilder类
+
 
 [修改，添加](https://github.com/TMBotDev/TMBot/commit/aab6c41dba9a00f63e8d49d6ab2631ebb12a7f9c) 
 1.添加一些注释
@@ -63,5 +60,4 @@
 [修改初始化输出,添加无颜色模式](https://github.com/TMBotDev/TMBot/commit/8a9e5e2c1751e11a155f4e62681eba5f9f7fb4b4) 
 1.修改一些初始化的输出格式
 2.添加无颜色模式(在TMBot根目录添加NO_COLOR文件)
-
 
