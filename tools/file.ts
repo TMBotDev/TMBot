@@ -188,7 +188,7 @@ export class FileClass {
         if (ph == null) { throw new Error(`FileClass::getFilesList 无法获取标准路径<${path1}>`); }
         if (!this.exists(ph)) { return []; }
         let stat = fs.statSync(ph);
-        if (stat.isDirectory()) { return []; }
+        if (!stat.isDirectory()) { return []; }
         return fs.readdirSync(ph);
     }
 }
