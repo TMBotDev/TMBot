@@ -88,7 +88,7 @@ async function delayLoadPlugins() {
 }
 
 async function load() {
-    if (process.argv.indexOf("-syncVer")) {
+    if (process.argv.indexOf("-syncVer") != -1) {
         let json = JSON.parse(FileClass.readFrom("./package.json")!);
         json["version"] = Version.version.join(".");
         let str = JSON.stringify(json, null, 2);
