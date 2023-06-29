@@ -110,7 +110,6 @@ export class WebsocketClient {
     }
     _Init() {
         this._client.onopen = (_e) => {
-            logger.info("服务器连接成功!");
             this._events.onStart.fire("WebsocketProcessStart", null);
         };
         this._client.onmessage = (e) => {

@@ -18,6 +18,7 @@ export class BotDockingMgr {
             let lock = true;
             let res = false;
             wsc.events.onStart.on(() => {
+                logger.info(`服务器连接成功!`);
                 reConnectC = 0;
                 isFirst = false; lock = false; res = true;
             });
