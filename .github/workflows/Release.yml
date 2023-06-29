@@ -45,7 +45,7 @@ jobs:
         id: version
         uses: notiz-dev/github-action-json-property@release
         with:
-          path: "package.json"
+          path: "./TMBot/package.json"
           prop_path: "version"
       - name: Upload TMBot
         uses: actions/upload-artifact@v3.1.0
