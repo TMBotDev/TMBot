@@ -1,7 +1,7 @@
 import { isPromise } from "util/types";
-import { Logger } from "../tools/logger";
+import { Logger } from "../../tools/logger";
 import { GlobalVar } from "./Global";
-import { PluginPackage } from "./PluginLoader";
+import { PluginPackage } from "../PluginLoader";
 
 function PrintErrorIn(e: Error, log: { "error": (...args: any[]) => void }) {
     let ErrorFile = GlobalVar.getErrorFile(e);

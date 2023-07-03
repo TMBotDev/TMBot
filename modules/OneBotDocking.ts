@@ -1,7 +1,7 @@
 import path from "path";
 import { Logger } from "../tools/logger";
-import { WebsocketClient } from "./WebSocket";
-import { TEvent } from "./TEvent";
+import { WebsocketClient } from "./RunTime/WebSocket";
+import { TEvent } from "./RunTime/TEvent";
 import { AnonymousInfo } from "./QQDataTypes/AnonymousInfo";
 import { DeviceInfo } from "./QQDataTypes/DeviceInfo";
 import { FileInfo } from "./QQDataTypes/FileInfo";
@@ -14,11 +14,11 @@ import { ForwardNodeData, MsgInfo, MsgInfoEx, Msg_Info } from "./QQDataTypes/Msg
 import { OfflineFileInfo } from "./QQDataTypes/OfflineFileInfo";
 import { SenderInfo } from "./QQDataTypes/SenderInfo";
 import { StrangerInfo } from "./QQDataTypes/StrangerInfo";
-import { ErrorPrint } from "./ErrorPrint";
+import { ErrorPrint } from "./RunTime/ErrorPrint";
 import { ForwardMessageInfo, ForwardMsgs } from "./QQDataTypes/ForwardMessageInfo";
 import { GuildSystem } from "./GuildSystem";
-import { MessageDB } from "./MessageDB";
-import { GlobalVar } from "./Global";
+import { MessageDB } from "./RunTime/MessageDB";
+import { GlobalVar } from "./RunTime/Global";
 
 
 // let logger = new Logger("Bot", LoggerLevel.Info);

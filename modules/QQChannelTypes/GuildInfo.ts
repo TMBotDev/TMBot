@@ -1,4 +1,4 @@
-import { GlobalEvent } from "../Global";
+import { GlobalEvent } from "../RunTime/Global";
 import { GuildSystem } from "../OneBotDocking";
 import { Msg_Info } from "../QQDataTypes/MsgInfo";
 import { GuildChannelInfo } from "./GuildChannelInfo";

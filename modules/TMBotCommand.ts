@@ -1,5 +1,5 @@
-import { TMBotCmd } from "./CommandSystem";
-import { GlobalVar } from "./Global";
+import { TMBotCmd } from "./CmdSystem/CommandSystem";
+import { GlobalVar } from "./RunTime/Global";
 
 
 //逃避tsc编译bug

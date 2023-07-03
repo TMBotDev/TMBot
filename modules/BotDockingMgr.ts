@@ -1,5 +1,5 @@
 import { OneBotDocking } from "./OneBotDocking";
-import { WebsocketClient } from "./WebSocket";
+import { WebsocketClient } from "./RunTime/WebSocket";
 
 // import { sleep } from "deasync";
 

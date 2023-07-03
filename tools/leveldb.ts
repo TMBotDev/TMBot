@@ -2,7 +2,7 @@
 import { FileClass } from "./file";
 import { Logger } from "./logger";
 // import { sleep } from "deasync";
-import { GlobalEvent } from "../modules/Global";
+import { GlobalEvent } from "../modules/RunTime/Global";
 
 let allLevelDB = new Set<LevelDB>();
 
