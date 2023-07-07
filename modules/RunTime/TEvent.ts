@@ -14,7 +14,7 @@ function PrintErrorIn(e: Error, log: { "error": (...args: any[]) => void }) {
     } else {
         ver = `v${GlobalVar.Version.version.join(".")}${GlobalVar.Version.isBeta ? "Beta" : ""}`;
     }
-    console.log(ver)
+    // console.log(ver)
     log.error(`In ${res.isPlugin ? "Plugin" : "File"}: ${res.name}[${ver}]`);
 }
 

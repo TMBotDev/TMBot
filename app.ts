@@ -42,14 +42,18 @@ GlobalVar.Version = Version;
 GlobalVar.MainLogger = MainLogger;
 GlobalVar.TMBotConfig = TMBotConfig;
 
-
 process.on("uncaughtException", (err, _ori) => {
     MainLogger.error(`程序出现未捕获的异常:`);
     if (!(err instanceof Error)) {
         MainLogger.error("未知异常消息: ", err);
         return;
     }
-    MainLogger.error(`Stack: ${err.stack}`);
+    MainLogger.error(`Stack: ${err.toString()}`);
+    if (err.toString().split("\n").length < 2) {
+        MainLogger.fatal(`没有找到错误地点!`);
+        // GlobalVar.TMBotStop();
+        return;
+    }
     let off = (!(err instanceof OffsetException)) ? 0 : err.offsetLine;
     let res = GlobalVar.getPluginName(GlobalVar.getErrorFile(err, off));
     if (res.isPlugin) {
