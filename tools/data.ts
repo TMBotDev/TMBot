@@ -57,12 +57,10 @@ export class JsonConfigFileClass {
     #Path: string;
     #TextCache: string;
     #Cache: any;
-    #TimeStamp: number;
     #isTasking: boolean;
     #isDestroy: boolean;
     constructor(path: string, defaultStr: string = "{}") {
         this.#Path = path;
-        this.#TimeStamp = 0;
         let fileText = FileClass.readFrom(path);
         if (fileText == null) {
             fileText = defaultStr;
@@ -74,10 +72,8 @@ export class JsonConfigFileClass {
     }
     _getCache() {
         if (this.#isDestroy) { throw new Error(`JsonConfigFileClass::_GetCache: Illegal use of destroyed object<${this.#Path}>!`); }
-        let nowTime = Date.now();
-        if ((nowTime - this.#TimeStamp) > 500) {
+        if (!this.#Cache) {
             this.#Cache = JSON.parse(this.#TextCache);
-            this.#TimeStamp = nowTime;
         }
         return this.#Cache;
     }
@@ -129,7 +125,7 @@ export class JsonConfigFileClass {
             throw new Error(`The original file <${this.#Path}> disappeared!`);
         }
         this.#TextCache = fileText;
-        this.#TimeStamp = 0;
+        this.#Cache = undefined;
         return true;
     }
     close() {
@@ -149,9 +145,8 @@ export class JsonConfigFileClass {
     write(content: string) {
         if (this.#isDestroy) { throw new Error(`JsonConfigFileClass::Write: Illegal use of destroyed object<${this.#Path}>!`); }
         this.#TextCache = content;
-        this.#TimeStamp = 0;
+        this.#Cache = undefined;
         FileClass.writeTo(this.#Path, content);
-        this._getCache();
         return true;
     }
 }
@@ -160,12 +155,10 @@ export class IniConfigFileClass {
     #Path: string;
     #TextCache: string;
     #Cache: any;
-    #TimeStamp: number;
     #isTasking: boolean;
     #isDestroy: boolean;
     constructor(path: string, defaultStr: string = "{}") {
         this.#Path = path;
-        this.#TimeStamp = 0;
         let fileText = FileClass.readFrom(path);
         if (fileText == null) {
             fileText = defaultStr;
@@ -176,10 +169,8 @@ export class IniConfigFileClass {
     }
     _getCache() {
         if (this.#isDestroy) { throw new Error(`IniConfigFileClass::_GetCache: Illegal use of destroyed object<${this.#Path}>!`); }
-        let nowTime = Date.now();
-        if ((nowTime - this.#TimeStamp) > 500) {
+        if (!this.#Cache) {
             this.#Cache = ini.parse(this.#TextCache);
-            this.#TimeStamp = nowTime;
         }
         return this.#Cache;
     }
@@ -263,7 +254,7 @@ export class IniConfigFileClass {
             throw new Error(`The original file <${this.#Path}> disappeared!`);
         }
         this.#TextCache = fileText;
-        this.#TimeStamp = 0;
+        this.#Cache = undefined;
         return true;
     }
     close() {
@@ -283,9 +274,8 @@ export class IniConfigFileClass {
     write(content: string) {
         if (this.#isDestroy) { throw new Error(`IniConfigFileClass::Write: Illegal use of destroyed object<${this.#Path}>!`); }
         this.#TextCache = content;
-        this.#TimeStamp = 0;
+        this.#Cache = undefined;
         FileClass.writeTo(this.#Path, content);
-        this._getCache();
         return true;
     }
 }
