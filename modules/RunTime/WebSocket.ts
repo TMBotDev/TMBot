@@ -7,7 +7,6 @@ import { TEvent } from "./TEvent";
 
 let logger = new Logger("WebsocketClient", 4);
 
-
 // export class CustomConnection extends ws.connection {
 //     public ID: string | undefined;
 // }
