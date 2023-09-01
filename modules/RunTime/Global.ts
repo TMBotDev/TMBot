@@ -1,8 +1,8 @@
 import { dirname } from "path";
-import { JsonConfigFileClass } from "../tools/data";
-import { FileClass } from "../tools/file";
-import { $$_LOGGER_SET_LOG_COLOR_, Logger } from "../tools/logger";
-import { PLUGIN_DIR } from "./PluginLoader";
+import { JsonConfigFileClass } from "../../tools/data";
+import { FileClass } from "../../tools/file";
+import { $$_LOGGER_SET_LOG_COLOR_, Logger } from "../../tools/logger";
+import { PLUGIN_DIR } from "../PluginLoader";
 import { TEvent } from "./TEvent";
 
 //逃避tsc编译bug
@@ -38,7 +38,7 @@ export namespace GlobalVar {
         content = content.replace(/\\/g, "/");
         let isPlugin = false;
         let name = content;
-        let pluginDir = FileClass.getStandardPath(PLUGIN_DIR)!.replace(/\\/g, "/");
+        let pluginDir = PLUGIN_DIR.replace(/\\/g, "/");
         if (content.indexOf(pluginDir) != -1) {
             isPlugin = true;
             let tmp = content;
@@ -79,5 +79,7 @@ export namespace GlobalVar {
 };
 
 export namespace GlobalEvent {
-    export let onTMBotStop = new TEvent<(fn: (asyncFn: Promise<any>) => void) => void>({ "error": (...args: any[]) => { return GlobalVar.MainLogger.error(...args); } });
+    let fakeLog = { "error": (...args: any[]) => { return GlobalVar.MainLogger.error(...args); } };
+    export let onTMBotStop = new TEvent<(fn: (asyncFn: Promise<any>) => void) => void>(fakeLog);
+    export let onTMBotInitd = new TEvent<() => void>(fakeLog);
 }

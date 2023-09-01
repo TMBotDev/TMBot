@@ -1,5 +1,5 @@
 .gitee
-.vscode
+# .vscode
 build
 node_modules
 plugins/*
