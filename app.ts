@@ -21,7 +21,7 @@ let Logo = String.raw`
 
 let MainLogger = new Logger("TMBot");
 let Version = {
-    "version": [1, 1, 0] as [number, number, number],
+    "version": [1, 1, 1] as [number, number, number],
     "isBeta": true,
     "isDebug": false
 };
@@ -104,7 +104,7 @@ async function load() {
         MainLogger.warn(str);
         return;
     }
-    if (FileClass.exists("./NO_COLOR")) {
+    if (FileClass.exists("./NO_COLOR") || process.argv.indexOf("-NO_COLOR") != -1) {
         GlobalVar.LogColor.setLogColor(false);
         MainLogger.info("无颜色模式...");
     }

@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
+let InLLSE = (() => { return typeof (LL) != "undefined"; })();
 
 let standardPath = (() => {
     let dir = __dirname;
@@ -10,17 +11,16 @@ let standardPath = (() => {
     // return "./"
 })();
 
-
-
+//返回null遵守旧版返回值
 function getStandardPath(path1: string): string | null {
     path1 = path1.replace(/\\/g, "/");
     if (path1[1] == ":") {
         return path1;
     }
     if (path1[0] == "." && path1[1] == "/") {
-        return path.join(standardPath, path1.substring(2));
+        return path.join(standardPath, path1.substring(2)).replace(/\\/g, "/");
     } else {
-        return path.join(standardPath, path1);
+        return path.join(standardPath, path1).replace(/\\/g, "/");
     }
 }
 
@@ -159,13 +159,14 @@ export class FileClass {
         if (ph == null) { throw new Error(`FileClass::Move 无法获取标准<Path>路径<${path1}>`) }
         if (toPh == null) { throw new Error(`FileClass::Move 无法获取标准<To>路径<${path}>`); }
         if (!this.exists(ph)) { return false; }
-        return delFile(ph);
+        // mkdirSync(toPh);
+        return fs.renameSync(ph, toPh);
     }
     static rename(path1: string, to: string) {
         let ph = getStandardPath(path1);
         if (ph == null) { throw new Error(`FileClass::ReName 无法获取标准路径<${path1}>`); }
         if (!this.exists(ph)) { return false; }
-        fs.renameSync(ph, to);
+        return fs.renameSync(ph, to);
     }
     static getFileSize(path1: string) {
         let ph = getStandardPath(path1);
@@ -174,7 +175,7 @@ export class FileClass {
         let stat = fs.statSync(ph);
         if (stat.isDirectory()) {
             return -1;
-        } else { stat.size; }
+        } else { return stat.size; }
     }
     static checkIsDir(path1: string) {
         let ph = getStandardPath(path1);

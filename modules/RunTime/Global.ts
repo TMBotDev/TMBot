@@ -38,7 +38,7 @@ export namespace GlobalVar {
         content = content.replace(/\\/g, "/");
         let isPlugin = false;
         let name = content;
-        let pluginDir = FileClass.getStandardPath(PLUGIN_DIR)!.replace(/\\/g, "/");
+        let pluginDir = PLUGIN_DIR.replace(/\\/g, "/");
         if (content.indexOf(pluginDir) != -1) {
             isPlugin = true;
             let tmp = content;
