@@ -1,5 +1,5 @@
-import { TMBotCmd } from "./CommandSystem";
-import { GlobalVar } from "./Global";
+import { TMBotCmd } from "./CmdSystem/CommandSystem";
+import { GlobalVar } from "./RunTime/Global";
 
 
 //逃避tsc编译bug
@@ -52,7 +52,7 @@ cmdHelper.update();
 cmdHelper.setup();
 
 cmdSystem.newCommand("version", "版本信息", CmdPerm)
-    .overload([])!((cmd, _runner, out) => {//设置命令重载
+    .overload([])((cmd, _runner, out) => {//设置命令重载
         out.success(`TMBot版本: v${GlobalVar.Version.version.join(".")}${GlobalVar.Version.isBeta ? "(Beta)" : ""}`);
         let inLLSE = false;
         if (typeof (LL) != "undefined") {
@@ -69,7 +69,7 @@ let stopCmd = cmdSystem.newCommand("stop", "关闭TMBot", CmdPerm);
 
 stopCmd.setAlias("exit");
 
-stopCmd.overload([])!((cmd, runner, out) => {
+stopCmd.overload([])((cmd, runner, out) => {
     GlobalVar.TMBotStop();
     //都stop了还要啥解除占用啊
 });

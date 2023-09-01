@@ -1,10 +1,11 @@
-import { Logger } from "../tools/logger";
-import { OffsetException } from "./OffsetException";
-import { TEvent } from "./TEvent";
+import { Logger } from "../../tools/logger";
+import { OffsetException } from "../RunTime/OffsetException";
+import { TEvent } from "../RunTime/TEvent";
 
 let logger = new Logger("CommandSystem");
 
 export namespace TMBotCmd {
+    let ACCEPT_SYMBOL = Symbol(Math.floor(Math.random() * 1000));
     export namespace CommandParams {
         /** 
          * 父 
@@ -65,6 +66,7 @@ export namespace TMBotCmd {
                 super();
             }
             _paramIsThis(str: string) {
+                if (typeof (str) != "string") { return false; }
                 this.content = str;
                 return true;
             }
@@ -115,6 +117,7 @@ export namespace TMBotCmd {
             private rawText: string | undefined;
             constructor(public name: string) { super(); }
             _paramIsThis(_str: string, oriRes: string[], index: number) {
+                if (typeof (_str) != "string") { return false; }
                 this.rawText = oriRes.slice(index).join(" ");
                 return true;
             }
@@ -302,7 +305,7 @@ export namespace TMBotCmd {
          * @param perm 运行所需权限
          */
         newCommand(cmd: string, description: string, perm: RunCmdNeedPerm) {
-            let obj = new this.cmdClass(cmd, description, perm, this);
+            let obj = new this.cmdClass(cmd, description, perm, this, ACCEPT_SYMBOL);
             return obj;
         }
 
@@ -386,9 +389,9 @@ export namespace TMBotCmd {
     }
 
     /** 
-     * 单个命令 
+     * 单个命令,只作为父类存在
      */
-    class TMBotCommand<
+    export class TMBotCommand<
         RunCmdNeedPerm extends TMBotCommandPerm<any>,
         CmdRunner extends TMBotCommandRunner<RunCmdNeedPerm>,
         CmdOutput extends TMBotCommandOutput> {
@@ -432,7 +435,10 @@ export namespace TMBotCmd {
                 params: CommandParams.Param<unknown>[]
             ) => void
         }[] = [];
-        constructor(private cmd_: string, private _description: string, private needPerm: RunCmdNeedPerm, private cmdSystem: TMBotCommandSystem<RunCmdNeedPerm, CmdRunner, CmdOutput>) {
+        constructor(private cmd_: string, private _description: string, private needPerm: RunCmdNeedPerm, private cmdSystem: TMBotCommandSystem<RunCmdNeedPerm, CmdRunner, CmdOutput>, accept_sym: Symbol) {
+            if (accept_sym != ACCEPT_SYMBOL) {
+                throw new OffsetException(1, `单个命令无法被直接构建出来`);
+            }
             if (cmd_.indexOf(" ") != -1) {
                 throw new OffsetException(3, `主命令不得含有空格字符`);
             } else if (cmd_ == "") {
@@ -541,13 +547,11 @@ export namespace TMBotCmd {
                 if (canHasMandatory) {
                     canHasMandatory = param.isMandatory;
                 } else if (param.isMandatory) {
-                    logger.warn(`命令: "${this.cmd}" 注册指令重载失败!原因:在非必须参数出现后就不可出现必须参数了!`);
-                    return undefined;
+                    throw new OffsetException(1, `命令: "${this.cmd}" 注册指令重载失败!原因:在非必须参数出现后就不可出现必须参数了!`);
                 }
                 if (param instanceof CommandParams.RawText) {
                     if (!!params[(i + 1)]) {
-                        logger.warn(`命令: "${this.cmd}" 注册指令重载失败!原因:在RawText之后不能有任何参数了!`);
-                        return undefined;
+                        throw new OffsetException(1, `命令: "${this.cmd}" 注册指令重载失败!原因:在RawText之后不能有任何参数了!`);
                     }
                 }
                 i++;
@@ -652,7 +656,7 @@ export namespace TMBotCmd {
             this.helpCmd = cmdSystem.newCommand(`help`, `命令帮助`, { "isEligible": () => true } as TMBotCommandPerm<any>);
             this.helpCmd.setAlias("?");
 
-            this.helpCmd.overload([])!((cmd, _runner, out, _params) => {
+            this.helpCmd.overload([])((cmd, _runner, out, _params) => {
                 let arr = MapMap(this.cache)[1];
                 let content = ([] as string[]).concat(...arr);
                 let pages = splitArr(content, 7);
@@ -665,7 +669,7 @@ export namespace TMBotCmd {
                 cmd.RunningCompleted();
             });
 
-            this.helpCmd.overload([new CommandParams.Number("Page", false)])!((cmd, _runner, out, params) => {
+            this.helpCmd.overload([new CommandParams.Number("Page", false)])((cmd, _runner, out, params) => {
                 let arr = MapMap(this.cache)[1];
                 let content = ([] as string[]).concat(...arr);
                 let pages = splitArr(content, 7);
@@ -682,7 +686,7 @@ export namespace TMBotCmd {
                 cmd.RunningCompleted();
             });
 
-            this.helpCmd.overload([new CommandParams.String("cmd")])!((cmd, _runner, out, params) => {
+            this.helpCmd.overload([new CommandParams.String("cmd")])((cmd, _runner, out, params) => {
                 let nowSelCmd = params[0].value!;
                 let res = this.list.get(nowSelCmd);
                 if (!res) {

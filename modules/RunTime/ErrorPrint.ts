@@ -1,5 +1,5 @@
-import { FileClass } from "../tools/file";
-import { Logger } from "../tools/logger";
+import { FileClass } from "../../tools/file";
+import { Logger } from "../../tools/logger";
 import { GlobalVar } from "./Global";
 
 

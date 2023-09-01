@@ -4,7 +4,7 @@ import { FileClass } from "../tools/file";
 import { Logger } from "../tools/logger";
 import * as child_process from 'child_process';
 
-export const PLUGIN_DIR = "./plugins/";
+export const PLUGIN_DIR = FileClass.getStandardPath("./plugins/")!;
 
 let allPackage = new Map<string, PluginPackage>();
 
@@ -27,30 +27,29 @@ export class PluginPackage {
         while (i < l) {
             let dir = dirs[i++];
             if (dir.isDirectory() && (dir.name).toLowerCase() != "data") {
-                let fullDir = PLUGIN_DIR + dir.name;
-                let tmp = this.loadPlugin(fullDir);
-                if (tmp) {
-                    logger.info(`加载插件包 [${fullDir}] 成功!`);
-                } else {
-                    logger.error(`加载插件包 [${fullDir}] 失败!`);
-                }
+                let fullDir = path.join(PLUGIN_DIR, dir.name).replace(/\\/g, "/");
+                this.loadPlugin(fullDir);
             }
         }
         logger.info(`插件包全部加载完毕!共${allPackage.size}个插件包`);
     }
     static loadPlugin(dir: string) {
         try {
+            // dir = FileClass.getStandardPath(dir)!;
+            let standDir = FileClass.getStandardPath(dir)!;
             let PackagePath = path.join(dir, "package.json");
             let packageObj = JSON.parse(readFileSync(FileClass.getStandardPath(PackagePath)!, "utf8"));
-            if (packageObj.name != dir.replace(PLUGIN_DIR, "")) {
+            if (packageObj.name != standDir.replace(PLUGIN_DIR, "")) {
                 throw new Error(`模块名称只能和目录名相同!`);
             }
             let tmp = new PluginPackage(dir, packageObj.name, packageObj.description, packageObj.version);
             tmp.load();
+            logger.info(`加载插件包 [${dir}] 成功!`);
             return tmp;
         } catch (e) {
             // logger.error(`Error in load plugin: [${dir}]`);
             logger.error((e as Error).stack);
+            logger.error(`加载插件包 [${dir}] 失败!`);
             return undefined;
         }
     }
@@ -84,7 +83,7 @@ export class PluginPackage {
         // console.log();
         this._CheckDependencies();
         try {
-            this.Exports = require("./../" + this.dir);
+            this.Exports = require(this.dir);
             allPackage.set(this.name, this);
         } catch (_e) {
             let e = _e as Error;

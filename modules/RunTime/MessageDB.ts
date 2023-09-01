@@ -1,6 +1,6 @@
-import { LevelDB } from "../tools/leveldb";
-import { GuildMsgTypeEx } from "./QQChannelTypes/GuildMsgInfo";
-import { MsgTypeInfoEx } from "./QQDataTypes/MsgInfo";
+import { LevelDB } from "../../tools/leveldb";
+import { GuildMsgTypeEx } from "../QQChannelTypes/GuildMsgInfo";
+import { MsgTypeInfoEx } from "../QQDataTypes/MsgInfo";
 
 export class MessageDB {
     public level: LevelDB | undefined;

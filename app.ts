@@ -1,13 +1,13 @@
 // import { sleep } from "deasync";
-import { GlobalVar } from "./modules/Global";
+import { GlobalEvent, GlobalVar } from "./modules/RunTime/Global";
 import { BotDockingMgr } from "./modules/BotDockingMgr";
-import { ErrorPrint } from "./modules/ErrorPrint";
+import { ErrorPrint } from "./modules/RunTime/ErrorPrint";
 import { PluginPackage } from "./modules/PluginLoader";
 import { JsonConfigFileClass } from "./tools/data";
 // import { LevelDB } from "./tools/leveldb";
 import { Logger } from "./tools/logger";
 import { onReadLineInit } from "./modules/ReadLine";
-import { OffsetException } from "./modules/OffsetException";
+import { OffsetException } from "./modules/RunTime/OffsetException";
 import { FileClass } from "./tools/file";
 
 let Logo = String.raw`
@@ -21,8 +21,8 @@ let Logo = String.raw`
 
 let MainLogger = new Logger("TMBot");
 let Version = {
-    "version": [1, 0, 9] as [number, number, number],
-    "isBeta": false,
+    "version": [1, 1, 1] as [number, number, number],
+    "isBeta": true,
     "isDebug": false
 };
 let TMBotConfig = new JsonConfigFileClass("./config/config.json", JSON.stringify({
@@ -42,14 +42,18 @@ GlobalVar.Version = Version;
 GlobalVar.MainLogger = MainLogger;
 GlobalVar.TMBotConfig = TMBotConfig;
 
-
 process.on("uncaughtException", (err, _ori) => {
     MainLogger.error(`程序出现未捕获的异常:`);
     if (!(err instanceof Error)) {
         MainLogger.error("未知异常消息: ", err);
         return;
     }
-    MainLogger.error(`Stack: ${err.stack}`);
+    MainLogger.error(`Stack: ${err.toString()}`);
+    if (err.toString().split("\n").length < 2) {
+        MainLogger.fatal(`没有找到错误地点!`);
+        // GlobalVar.TMBotStop();
+        return;
+    }
     let off = (!(err instanceof OffsetException)) ? 0 : err.offsetLine;
     let res = GlobalVar.getPluginName(GlobalVar.getErrorFile(err, off));
     if (res.isPlugin) {
@@ -100,7 +104,7 @@ async function load() {
         MainLogger.warn(str);
         return;
     }
-    if (FileClass.exists("./NO_COLOR")) {
+    if (FileClass.exists("./NO_COLOR") || process.argv.indexOf("-NO_COLOR") != -1) {
         GlobalVar.LogColor.setLogColor(false);
         MainLogger.info("无颜色模式...");
     }
@@ -157,6 +161,7 @@ async function load() {
     });
     allPromise.length != 0 && MainLogger.info(`§d--------初始化信息--------`);
     await Promise.all(allPromise);
+    GlobalEvent.onTMBotInitd.fire("TMBotProcess_Event_TMBotInitd", null);
     MainLogger.info(`TMBot加载完成! (${((Date.now() - startTime) / 1000).toFixed(2)}s),输入"help"可查看命令列表`);
 }
 

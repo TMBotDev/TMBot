@@ -1,4 +1,4 @@
-import { ErrorPrint } from "./ErrorPrint";
+import { ErrorPrint } from "./RunTime/ErrorPrint";
 import { OneBotDocking, TMBotPromise, obj, ret_data_struct } from "./OneBotDocking";
 import { GuildChannelInfo } from "./QQChannelTypes/GuildChannelInfo";
 import { GuildInfo } from "./QQChannelTypes/GuildInfo";
@@ -8,7 +8,7 @@ import { GuildMsgInfo, GuildMsgInfoEx } from "./QQChannelTypes/GuildMsgInfo";
 import { GuildSenderInfo } from "./QQChannelTypes/GuildSenderInfo";
 import { ReactionInfos } from "./QQChannelTypes/ReactionInfo";
 import { MsgInfo, Msg_Info } from "./QQDataTypes/MsgInfo";
-import { TEvent } from "./TEvent";
+import { TEvent } from "./RunTime/TEvent";
 
 
 function SafeGetGuild(this: GuildSystem, guild_id: string) {

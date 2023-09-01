@@ -2,7 +2,7 @@
 // import deasync from "deasync";
 // import * as websocket_ts from "websocket-ts";
 import { WebSocket } from "ws";
-import { Logger } from "../tools/logger";
+import { Logger } from "../../tools/logger";
 import { TEvent } from "./TEvent";
 
 let logger = new Logger("WebsocketClient", 4);
@@ -109,7 +109,6 @@ export class WebsocketClient {
     }
     _Init() {
         this._client.onopen = (_e) => {
-            logger.info("服务器连接成功!");
             this._events.onStart.fire("WebsocketProcessStart", null);
         };
         this._client.onmessage = (e) => {

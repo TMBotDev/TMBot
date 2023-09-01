@@ -1,5 +1,5 @@
-import { createInterface } from "readline";
-import { GlobalEvent, GlobalVar } from "./Global";
+import { Interface, createInterface } from "readline";
+import { GlobalEvent, GlobalVar } from "./RunTime/Global";
 import { ConsoleCmd } from "./TMBotCommand";
 
 // let log_ = MainLogger;
@@ -9,6 +9,8 @@ declare namespace mc {
     export function listen(a: "onConsoleCmd", b: (c: string) => void): boolean;
     export function runcmd(str: string): boolean;
 };
+
+let READLINE_INST: Interface;
 
 export function onReadLineInit() {
     if (typeof (LL) != "undefined") {
@@ -34,6 +36,7 @@ export function onReadLineInit() {
         "input": process.stdin,
         "output": process.stdout
     });
+    READLINE_INST = readline;
     let Stopping = false;
     readline.on("SIGINT", async function () {
         if (Stopping) {
@@ -50,4 +53,8 @@ export function onReadLineInit() {
     readline.on("line", (input) => {
         ConsoleCmd.CmdSystem._execute(input || "", ConsoleCmd.CmdRunner, ConsoleCmd.CmdOutput, false);
     });
+}
+
+export function $$_GET_READLINE_INSTANCE_() {
+    return READLINE_INST;
 }

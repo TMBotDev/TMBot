@@ -1,7 +1,7 @@
 import { isPromise } from "util/types";
-import { Logger } from "../tools/logger";
+import { Logger } from "../../tools/logger";
 import { GlobalVar } from "./Global";
-import { PluginPackage } from "./PluginLoader";
+import { PluginPackage } from "../PluginLoader";
 
 function PrintErrorIn(e: Error, log: { "error": (...args: any[]) => void }) {
     let ErrorFile = GlobalVar.getErrorFile(e);
@@ -14,7 +14,7 @@ function PrintErrorIn(e: Error, log: { "error": (...args: any[]) => void }) {
     } else {
         ver = `v${GlobalVar.Version.version.join(".")}${GlobalVar.Version.isBeta ? "Beta" : ""}`;
     }
-    console.log(ver)
+    // console.log(ver)
     log.error(`In ${res.isPlugin ? "Plugin" : "File"}: ${res.name}[${ver}]`);
 }
 
