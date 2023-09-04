@@ -762,6 +762,9 @@ export class OneBotDocking {
                 this._events.onInitSuccess.fire("OneBotDockingProcess_Event_InitSuccess", null);
                 this.logger.info(`基础信息初始化成功!`);
                 this._IsInitd = true;
+                this._events.onInitSuccess.onAdd((fn, _name) => {
+                    fn(Date.now());
+                });
             } else {
                 this.logger.fatal(`基础信息初始化失败!`);
             }
@@ -821,12 +824,14 @@ export class OneBotDocking {
             // this._events.onClientClose.fire(
             //     "OneBotDockingProcess_Event_ClientClose"
             // );
+            this._events.onInitSuccess.onAdd((_fn, _name) => { });
             this._events.onClientDisconnect.fire(
                 "OneBotDockingProcess_Event_ClientDisconnect",
                 null
             );
         });
         this.wsc.events.onDestroy.on(() => {
+            this._events.onInitSuccess.onAdd((_fn, _name) => { });
             this._events.onClientDestroy.fire(
                 "OneBotDockingProcess_Event_ClientClose",
                 null

@@ -18,8 +18,10 @@ function PrintErrorIn(e: Error, log: { "error": (...args: any[]) => void }) {
     log.error(`In ${res.isPlugin ? "Plugin" : "File"}: ${res.name}[${ver}]`);
 }
 
-export class TEvent<FUNCTION_T extends (...args: any[]) => any | Promise<any>>{
+export class TEvent<FUNCTION_T extends (...args: any[]) => (any | Promise<any>)>{
     private num = 0;
+    private _onAdd = (_fn: (time: number, ...params: Parameters<FUNCTION_T>) => ReturnType<FUNCTION_T>, _name: string) => { };
+    private _onDel = (_fn: (time: number, ...params: Parameters<FUNCTION_T>) => ReturnType<FUNCTION_T>, _name: string) => { };
     constructor(
         private log: Logger | { "error": (...args: any[]) => any },
         private funcList: { [key: string]: (time: number, ...params: Parameters<FUNCTION_T>) => ReturnType<FUNCTION_T> } = {}
@@ -35,9 +37,11 @@ export class TEvent<FUNCTION_T extends (...args: any[]) => any | Promise<any>>{
                 return `_NOT_FUNCTION_NAME_(${this.num++})`;
             }
         })();
-        this.funcList[name] = (_t, ...p) => {
+        let Transfer = (_t: number, ...p: Parameters<FUNCTION_T>) => {
             return func(...p);
-        };
+        }
+        this._onAdd(Transfer, name);
+        this.funcList[name] = Transfer;
         return name;
     }
     onEx(func: (time: number, ...params: Parameters<FUNCTION_T>) => ReturnType<FUNCTION_T>) {
@@ -51,12 +55,23 @@ export class TEvent<FUNCTION_T extends (...args: any[]) => any | Promise<any>>{
                 return `_NOT_FUNCTION_NAME_(${this.num++})`;
             }
         })();
+        this._onAdd(func, name);
         this.funcList[name] = func;
         return name;
     }
     un(name: string) {
-        delete this.funcList[name];
-        return true;
+        if (this.funcList[name] != undefined) {
+            this._onDel(this.funcList[name], name);
+            delete this.funcList[name];
+            return true;
+        }
+        return false;
+    }
+    onAdd(fn: (fn: (time: number, ...params: Parameters<FUNCTION_T>) => ReturnType<FUNCTION_T>, name: string) => void) {
+        this._onAdd = fn;
+    }
+    onDel(fn: (fn: (time: number, ...params: Parameters<FUNCTION_T>) => ReturnType<FUNCTION_T>, name: string) => void) {
+        this._onDel = fn;
     }
     clear() {
         this.funcList = {};

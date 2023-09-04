@@ -15,6 +15,7 @@ declare global {
 global.LL = typeof (ll) == "undefined" ? undefined : ll;
 
 export namespace GlobalVar {
+    export let TMBotIsInitd = false;
     export let TMBotConfig: JsonConfigFileClass;
     export let MainLogger: Logger;
     export let Version: {
@@ -82,4 +83,12 @@ export namespace GlobalEvent {
     let fakeLog = { "error": (...args: any[]) => { return GlobalVar.MainLogger.error(...args); } };
     export let onTMBotStop = new TEvent<(fn: (asyncFn: Promise<any>) => void) => void>(fakeLog);
     export let onTMBotInitd = new TEvent<() => void>(fakeLog);
+    onTMBotInitd.on(() => {
+        GlobalVar.TMBotIsInitd = true;
+    });
+    onTMBotInitd.onAdd((fn, _name) => {
+        if (GlobalVar.TMBotIsInitd) {
+            fn(Date.now());
+        }
+    });
 }
