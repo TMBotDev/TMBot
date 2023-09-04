@@ -88,7 +88,9 @@ export namespace GlobalEvent {
     });
     onTMBotInitd.onAdd((fn, _name) => {
         if (GlobalVar.TMBotIsInitd) {
-            fn(Date.now());
+            setTimeout(() => {
+                fn(Date.now());
+            }, 1);
         }
     });
 }

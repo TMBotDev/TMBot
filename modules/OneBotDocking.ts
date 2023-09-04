@@ -763,7 +763,9 @@ export class OneBotDocking {
                 this.logger.info(`基础信息初始化成功!`);
                 this._IsInitd = true;
                 this._events.onInitSuccess.onAdd((fn, _name) => {
-                    fn(Date.now());
+                    setTimeout(() => {
+                        fn(Date.now());
+                    }, 1);
                 });
             } else {
                 this.logger.fatal(`基础信息初始化失败!`);
