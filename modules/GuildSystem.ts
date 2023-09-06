@@ -238,7 +238,7 @@ export class GuildSystem {
          */
         "onChannelInfoUpdated": new TEvent<(guild: GuildInfo, sub_type: ("add" | "del" | "update"), channel_id: string, new_data: GuildChannelInfo | undefined) => void>(this.DelayLogger)
     };
-    constructor(protected _this: OneBotDocking) { }//这里的运行时间在主类初始化之前
+    constructor(protected _this: OneBotDocking) { }//这里的运行时间在主类初始化之前,不推荐在这写关于机器人的操作
     /** 在主类执行_Init的时候这玩意会自动执行 */
     async _Init() {
         this.log.info(`§l§e----------------`);
@@ -434,7 +434,7 @@ export class GuildSystem {
     }
 
     async getGuildMsgEx(msg_id: string) {
-        let res = await (this.getGuildMsg(msg_id).setData(false));
+        let res = await (this.getGuildMsg(msg_id));
         if (res.data == null) {
             this.log.error(`获取频道消息: ${msg_id} 失败!`);
             return;
