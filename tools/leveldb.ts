@@ -56,7 +56,7 @@ export class LevelDB {
         return (!res ? res : JSON.parse(res)) as T | undefined;
     }
     async set(key: string, data: any) {
-        if (!!this.level) { this.level!.set(key, data); return undefined; }
+        if (!!this.level) { this.level!.set(key, data); return; }
         if (!this.level1IsOpen) {
             await this.level1!.open();
             this.level1IsOpen = true;

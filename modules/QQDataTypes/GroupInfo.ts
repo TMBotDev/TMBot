@@ -46,10 +46,10 @@ export class GroupInfo {
     }
     /** 建议在这里获取群人数等信息 */
     async getBaseData(_this: OneBotDocking) {
-        let val = await _this.getGroupInfo(this.obj.group_id, false);
+        let val = await _this.getGroupInfo(this.obj.group_id, true);
         let data = val.data;
         if (data == null) {
-            _this.logger.error(`获取群聊: ${this.obj.group_id} 基础信息失败!`);
+            _this.logger.error(`获取群聊: ${this.obj.group_id} 基础信息失败!原因: ${val.msg}(${val.wording})`);
             return;
         }
         return new GroupBaseInfo(data);

@@ -16,7 +16,7 @@ export class GuildMemberInfo {
     get title() { return this.obj.title; }
     get nickname() { return this.obj.nickname; }
     /**
-     * ```
+     * ``` txt
      * 权限组ID
      * 默认情况下频道管理员的权限组ID为 2, 部分频道可能会另行创建, 需手动判断
      * 此接口仅展现最新的权限组, 获取用户加入的所有权限组请使用 get_guild_member_profile 接口
@@ -33,7 +33,7 @@ export class GuildMemberInfo {
 
 export class RoleInfo {
     constructor(private obj: {
-        "role_id": number,
+        "role_id": string,
         "role_name": string
     }) { }
     get role_id() { return this.obj.role_id; }
@@ -52,7 +52,7 @@ export class GuildMemberProfileInfo {
         "avatar_url": string,//用户头像
         "join_time": number,//加入时间
         "roles": {//加入的所有权限组
-            "role_id": number,//权限组ID
+            "role_id": string,//权限组ID
             "role_name": string//权限组名称
         }[]
     }) {

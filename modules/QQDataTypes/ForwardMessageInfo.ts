@@ -20,7 +20,7 @@ export class ForwardMessageInfo {
             }
             i++;
         }
-        return undefined;
+        return;
     }
 
 

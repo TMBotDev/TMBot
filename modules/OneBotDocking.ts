@@ -51,6 +51,7 @@ export type ret_data_struct = {
     "msg": string | undefined,
     /** 异常解释(没有异常时为空字符串)(这个文档里面没写) */
     "message": string,
+    "echo": any,
     "status": status,
     "retcode": retcode,
     "data": null | any
@@ -87,7 +88,7 @@ function SafeGetGroupInfo(this: OneBotDocking, group_id: number) {
             }
         }
         if (!!group) { return ret(group); }
-        this.logger.error(`无法获取群聊: {${group}} 信息`);
+        this.logger.error(`无法获取群聊: {${group}} 信息!`);
     });
 }
 
@@ -322,8 +323,8 @@ async function ProcessOneBotNotice(this: OneBotDocking, obj: obj) {
         case "group_increase": {
             let val = await this.getGroupInfo(obj.group_id, false);
             let data = val.data;
-            if (!data) {
-                this.logger.error(`无法获取群聊 < ${obj.group_id}> 基础信息`);
+            if (data == null) {
+                this.logger.error(`无法获取群聊 < ${obj.group_id}> 信息!原因: ${val.msg}(${val.wording})`);
                 return;
             }
             let baseGroupInfo = new GroupBaseInfo(data);
@@ -785,7 +786,7 @@ export class OneBotDocking {
             if (!b) { return; }
             let obj: obj = {};
             try { obj = JSON.parse(msg_); } catch (e) {
-                this.logger.error("无法进行解析工作! ", (e as Error).stack);
+                this.logger.error("无法进行解析工作!\n", (e as Error).stack);
                 this.logger.error("WorkMessage:", msg_);
                 return;
             }
@@ -861,9 +862,10 @@ export class OneBotDocking {
         }, 100);
     }
 
-    _SendRequest(type: string, params: { [key: string]: any }, func: (obj: ret_data_struct) => void, onError = (_data: obj) => true, err = new Error("Error Stack")) {
+    _SendRequest(type: string, params: { [key: string]: any }, func: (obj: ret_data_struct) => void, onError = (_data: ret_data_struct) => true, err = new Error("Error Stack")) {
         let oriFunc = func;
-        let id = Math.random().toString(16).slice(2);
+        let random = () => Math.random().toString(16).slice(2);
+        let id = random() + "-" + random() + "-" + +("0x" + random());
         let content = JSON.stringify({
             "action": type,
             "params": params,
@@ -889,7 +891,7 @@ ${err.stack}
         };
         if (this._isClosing || this.wsc.client.readyState != this.wsc.client.OPEN) {
             let info = "Websocket连接未建立!无法发起请求!";
-            func({ "status": "failed", "retcode": -1, "wording": info, "msg": "API_ERROR", "message": info, "data": null });
+            func({ "status": "failed", "retcode": -1, "wording": info, "msg": "API_ERROR", "echo": "-114514", "message": info, "data": null });
             return;
         }
         this._RequestCallbacks[id] = func;
@@ -911,7 +913,7 @@ ${err.stack}
         let val = await this.getLoginInfo();
         let data = val.data;
         if (data == null) {
-            bool && this.logger.error(`登录号信息获取失败!`);
+            bool && this.logger.error(`登录号信息获取失败!原因: 原因: ${val.msg}(${val.wording})`);
             return false;
         }
         this._LoginInfo = {
@@ -933,7 +935,7 @@ ${err.stack}
             "remark": string
         }[]) | null;
         if (data == null) {
-            bool && this.logger.error("获取好友列表失败!");
+            bool && this.logger.error(`获取好友列表失败!原因: ${val.msg}(${val.wording})`);
             return false;
         } else {
             let i = 0;
@@ -952,7 +954,7 @@ ${err.stack}
         let val = await this.getGroupList();
         let data = val.data as any[] | null;
         if (data == null) {
-            bool && this.logger.error(`获取群聊列表失败!`);
+            bool && this.logger.error(`获取群聊列表失败!原因: ${val.msg}(${val.wording})`);
             return false;
         }
         for (let i = 0, l = data.length; i < l; i++) {
@@ -980,14 +982,15 @@ ${err.stack}
     }
 
     async RefreshAllFriendInfo() {
-        let data = (await this.getFriendList().setData(false)).data as ({
+        let res = await (this.getFriendList().setData(false));
+        let data = res.data as ({
             "ClassType": "FriendData",
             "user_id": number,
             "nickname": string,
             "remark": string
         }[]) | null;
         if (data == null) {
-            this.logger.error(`刷新好友列表失败!`);
+            this.logger.error(`刷新好友列表失败!原因: ${res.msg}(${res.wording})`);
             return false;
         }
         this._Friends.clear();
@@ -999,9 +1002,10 @@ ${err.stack}
     }
 
     async getGroupBaseInfoEx(group_id: number) {
-        let data = (await this.getGroupInfo(group_id, true).setData(false)).data;
-        if (!data) {
-            this.logger.error(`获取群聊 ${group_id} 基础信息失败!`);
+        let res = await (this.getGroupInfo(group_id, true).setData(false));
+        let data = res.data;
+        if (data == null) {
+            this.logger.error(`获取群聊 ${group_id} 基础信息失败!原因: ${res.msg}(${res.wording})`);
             return;
         }
         return new GroupBaseInfo(data);
@@ -1011,7 +1015,7 @@ ${err.stack}
         let val = await (this.getStrangerInfo(user_id, no_cache).setData(false));
         let data = val.data;
         if (data == null) {
-            this.logger.error(`获取陌生人 ${user_id} 信息失败!`);
+            this.logger.error(`获取陌生人 ${user_id} 信息失败!原因: ${val.msg}(${val.wording})`);
             return;
         }
         return new StrangerInfo(data);
@@ -1021,7 +1025,7 @@ ${err.stack}
         let val = await (this.getGroupMemberInfo(group_id, user_id, no_cache));
         let data = val.data;
         if (data == null) {
-            this.logger.error(`获取群 ${group_id} 成员 ${user_id} 信息失败!`);
+            this.logger.error(`获取群 ${group_id} 成员 ${user_id} 信息失败!原因: ${val.msg}(${val.wording})`);
             return;
         }
         // console.log(data);
@@ -1031,7 +1035,7 @@ ${err.stack}
     async sendMsgEx(type: "private" | "group" | 0 | 1, id: number, msg: Msg_Info[] | string, auto_escape: boolean = false) {
         let res = await (this.sendMsg(type, id, msg, auto_escape).setData(false));
         if (res.data == null) {
-            this.logger.error(`发送消息至 ${type == 0 ? "private" : type == 1 ? "group" : type}(${id}) 失败!`);
+            this.logger.error(`发送消息至 ${type == 0 ? "private" : type == 1 ? "group" : type}(${id}) 失败!原因: ${res.msg}(${res.wording})`);
             return;
         }
         return res.data.message_id as number;
@@ -1044,7 +1048,7 @@ ${err.stack}
         if (!data) {
             return new MsgInfoEx(data);
         }
-        return undefined;
+        return;
     }
 
     /**
@@ -1065,7 +1069,7 @@ ${err.stack}
         if (data.data != null) {
             return new ForwardMessageInfo(data.data);
         }
-        return undefined;
+        return;
     }
 
     /**发送转发消息至群 */
@@ -1079,7 +1083,7 @@ ${err.stack}
                 "forward_id": res.data.forward_id as string
             };
         }
-        return undefined;
+        return;
     }
 
     /**发送转发消息至私聊 */
@@ -1093,7 +1097,7 @@ ${err.stack}
                 "forward_id": res.data.forward_id as string
             };
         }
-        return undefined;
+        return;
     }
 
     //#region API
@@ -1131,6 +1135,7 @@ ${err.stack}
                     "status": "ok",
                     "retcode": 0,
                     "msg": "GET_MSG_API_ERROR",
+                    "echo": "-114514",
                     "wording": !data ? `没有找到消息: ${msg_id}` : undefined
                 };
                 if (!data) {
@@ -1388,7 +1393,7 @@ ${err.stack}
         return this._SendReqPro("set_group_portrait", { group_id, file, "cache": +cache });
     }
     /**
-     * @note ```
+     * @note ``` txt
      * invited_requests	InvitedRequest[] 邀请消息列表
      * join_requests	JoinRequest[]	 进群消息列表
      * 
@@ -1446,7 +1451,7 @@ ${err.stack}
         return this._SendReqPro("get_group_file_system_info", { group_id });
     }
     /**
-     * @note ```
+     * @note ``` txt
      * (自行使用new套入对接对象)
      * data: null |
      * files	File[]	文件列表
@@ -1457,7 +1462,7 @@ ${err.stack}
         return this._SendReqPro("get_group_root_files", { group_id });
     }
     /**
-     * @note ```
+     * @note ``` txt
      * (自行使用new套入对接对象)
      * data: null |
      * 字段	类型	说明
@@ -1505,7 +1510,7 @@ ${err.stack}
         return this._SendReqPro("delete_essence_msg", { message_id });
     }
     /**
-     * @note ```
+     * @note ``` txt
      * data: null |
      * {
      * sender_id: int64	发送者QQ 号
@@ -1522,7 +1527,7 @@ ${err.stack}
         return this._SendReqPro("get_essence_msg_list", { group_id });
     }
     /**
-     * @note ```
+     * @note ``` txt
      * data: null |
      * {
      *     "level": number//安全等级, 1: 安全 2: 未知 3: 危险

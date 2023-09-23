@@ -50,7 +50,7 @@ export class PluginPackage {
             // logger.error(`Error in load plugin: [${dir}]`);
             logger.error((e as Error).stack);
             logger.error(`加载插件包 [${dir}] 失败!`);
-            return undefined;
+            return;
         }
     }
 

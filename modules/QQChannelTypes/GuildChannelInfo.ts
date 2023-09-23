@@ -30,7 +30,7 @@ export class GuildChannelInfo {
     get channel_id() { return this.obj.channel_id; }
     /** 
      * 子频道类型
-     * ```
+     * ``` txt
      * 已知子频道类型列表
      * 
      * 类型	说明

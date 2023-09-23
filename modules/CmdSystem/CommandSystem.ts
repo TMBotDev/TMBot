@@ -252,7 +252,7 @@ export namespace TMBotCmd {
                     return cmdIns;
                 }
             }
-            return undefined;
+            return;
         }
         getCmdList() {
             let set = new Set<TMBotCommand<RunCmdNeedPerm, CmdRunner, CmdOutput>>();

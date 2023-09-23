@@ -132,12 +132,14 @@ export class GuildMsgInfo {
 
 
 export type GuildMsgTypeEx = {
-    "guild": boolean,
+    "channel_id": string,
     "guild_id": string,
     "message": Msg_Info[] | string,
     "message_id": string,
-    "message_type": "guild",
+    "message_seq": number,
+    "message_source": "channel" | "direct",
     "sender": { "nickname": string, "user_id": number, "tiny_id": string },
+    "reactions": any[],
     "time": number
 }
 
@@ -150,17 +152,27 @@ export class GuildMsgInfoEx {
     }
 
     /** 是否为频道内消息 */
-    get guild() { return this.obj.guild; }
+    get guild() { return this.obj.message_source == "channel"; }
     /** 频道ID */
     get guild_id() { return this.obj.guild_id; }
     /** 消息 */
     get message() { return this.obj.message; }
     /** 消息ID */
     get message_id() { return this.obj.message_id; }
-    /** 消息类型 */
-    get message_type() { return this.obj.message_type; }
+    /** 消息类型(继承之前的设定,请尽快使用)
+     * @deprecated
+     */
+    get message_type() {
+        if (this.obj.message_source == "channel") {
+            return "guild";
+        } else { return this.obj.message_source; }
+    }
+    /** 消息来源 */
+    get message_source() { return this.obj.message_source; }
     /** 发送者 */
     get sender() { return this.obj.sender; }
+    /** 不知道这是什么玩意,文档说这玩意恒定为空 */
+    get reactions() { return this.obj.reactions; }
     /** 消息时间 */
     get time() { return this.obj.time; }
     /** 获取发送日期时间 */

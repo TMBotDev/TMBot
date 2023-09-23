@@ -23,7 +23,7 @@ export class GroupMemberInfo {
         "shut_up_timestamp": number | undefined,
     }) { }
     /**
-     * ```
+     * ``` txt
      * 设置禁言
      * (可能无权限失败)
      * ```
@@ -33,7 +33,7 @@ export class GroupMemberInfo {
         return _this.groupMute(this.obj.group_id, this.obj.user_id, time);
     }
     /**
-     * ```
+     * ``` txt
      * 方便函数
      * 获取这个群成员对应的群对象
      * ```
@@ -42,7 +42,7 @@ export class GroupMemberInfo {
         return _this.getGroupInfoSync(this.obj.group_id);
     }
     /**
-     * ```
+     * ``` txt
      * 方便函数
      * 可能发送失败
      * ```
